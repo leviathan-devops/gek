@@ -38,12 +38,13 @@ switch (verb) {
     // out of the judged message (measured live: the decoy PR passed on its merge-commit message),
     // and a `|| HEAD~1` fallback would silently narrow the range when the base ref is missing.
     // A missing base refuses by name (fallback-slop law).
-    const baseOk = Bun.spawnSync(["sh", "-c", `cd ${dir} && git rev-parse --verify origin/main`], { stdout: "pipe" });
+    const baseRef = rest.find((a) => a.startsWith("--base="))?.split("=")[1] ?? process.env.GEK_BASE_REF ?? "origin/main";
+    const baseOk = Bun.spawnSync(["sh", "-c", `cd ${dir} && git rev-parse --verify ${baseRef}`], { stdout: "pipe" });
     if (baseOk.exitCode !== 0) {
-      console.error("GEK_RANGE_BASE_UNAVAILABLE: origin/main is absent - the server check judges the PR RANGE and requires the base ref (actions/checkout fetch-depth: 0). A narrowed range would silently hide commits. Remedy: fix the checkout; never fall back.");
+      console.error(`GEK_RANGE_BASE_UNAVAILABLE: ${baseRef} is absent - the server check judges the PR RANGE and requires the base ref (pass --base=<ref> or GEK_BASE_REF; actions/checkout fetch-depth: 0 fetches it). A narrowed range would silently hide commits. Remedy: fix the base ref; never fall back.`);
       process.exit(2);
     }
-    const proc = Bun.spawnSync(["sh", "-c", `cd ${dir} && git log --format=%B origin/main..HEAD | head -80 && echo --- && git diff --name-only origin/main..HEAD && echo --- && git diff origin/main..HEAD | head -400`], { stdout: "pipe" });
+    const proc = Bun.spawnSync(["sh", "-c", `cd ${dir} && git log --format=%B ${baseRef}..HEAD | head -80 && echo --- && git diff --name-only ${baseRef}..HEAD && echo --- && git diff ${baseRef}..HEAD | head -400`], { stdout: "pipe" });
     const out = proc.stdout.toString();
     const [message, names, diff] = out.split("\n---\n");
     const paths = (names ?? "").split("\n").map((l) => l.trim()).filter(Boolean);
