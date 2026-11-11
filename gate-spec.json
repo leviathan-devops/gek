@@ -45,7 +45,12 @@
         "src/**",
         "design/**",
         "tests/**",
-        "corpus/**"
+        "corpus/**",
+        "GEK.md",
+        "GEK.lock",
+        "gate-spec.json",
+        "thresholds.json",
+        ".github/**"
       ],
       "deny": [
         "runtime/**"
