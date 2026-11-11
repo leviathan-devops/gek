@@ -14,7 +14,10 @@ function lawExtract(dir: string, anchors: string[], cap = 4000): string {
   for (const a of anchors) { const f = a.split(":")[0]; const l = Number(a.split(":")[1]); if (f && l) { if (!byFile.has(f)) byFile.set(f, []); byFile.get(f)!.push(l); } }
   const parts: string[] = [];
   for (const [f, lines] of byFile) {
-    try { const txt = readFileSync(`${dir}/${f}`, "utf8").split("\n"); for (const l of lines) parts.push(`${f}:${l}: ${txt[l - 1]?.slice(0, 200) ?? ""}`); } catch { /* anchor file absent → skip */ }
+    let txt: string[];
+    try { txt = readFileSync(`${dir}/${f}`, "utf8").split("\n"); }
+    catch { console.error(`GEK_AUTHORITY_MISSING: anchor file ${f} named by the gate-spec is unreadable - the law extract is never silently shortened. Remedy: restore the pinned authority file or recompile the gate-spec.`); process.exit(2); }
+    for (const l of lines) parts.push(`${f}:${l}: ${txt[l - 1]?.slice(0, 200) ?? ""}`);
   }
   return parts.join("\n").slice(0, cap);
 }
