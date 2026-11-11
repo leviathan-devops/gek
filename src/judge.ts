@@ -21,7 +21,14 @@ export async function askJudge(state: string, questions: Record<string, { type: 
   } catch (e) {
     refuse("GEK_JUDGE_DOWN", `${ENDPOINT} unreachable (${(e as Error).name}) — resume: bring the judge up (health at :8090/health), then re-run; never a pass`);
   }
-  if (!resp.ok) refuse("GEK_JUDGE_DOWN", `${ENDPOINT} answered HTTP ${resp.status}`);
+  if (!resp.ok) {
+    const rb = await resp.text().catch(() => "");
+    const dir2 = process.env.XDG_STATE_HOME ?? `${process.env.HOME}/.local/state`;
+    mkdirSync(`${dir2}/gek/raw`, { recursive: true });
+    const p2 = `${dir2}/gek/raw/http${resp.status}-${Date.now()}.json`;
+    writeFileSync(p2, `RESPONSE: ${rb.slice(0, 2000)}\n--- BODY(${body.length}) ---\n${body}`);
+    refuse("GEK_JUDGE_DOWN", `${ENDPOINT} answered HTTP ${resp.status} — response kept at ${p2}`);
+  }
   let data: { answers?: Record<string, { noul?: number; type?: string }> };
   try { data = await resp.json(); } catch { refuse("GEK_JUDGE_UNPARSEABLE", `non-JSON judge answer (HTTP ${resp.status})`); }
   const ps: Record<string, number> = {};
