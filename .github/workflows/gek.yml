@@ -4,14 +4,21 @@ on:
   push:
     branches: [main]
 jobs:
-  gek:
+  gek-mechanical:
     runs-on: [self-hosted, gek-host]
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - name: gek-mechanical
-        run: cd "$GITHUB_WORKSPACE" && GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK bun "$GEK_HOME/src/cli.ts" check . --check=mechanical
-      - name: gek-identity
-        run: cd "$GITHUB_WORKSPACE" && GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK bun "$GEK_HOME/src/cli.ts" check . --check=identity
-      - name: gek-judge
-        run: cd "$GITHUB_WORKSPACE" && GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK bun "$GEK_HOME/src/cli.ts" check . --check=judge
+      - run: cd "$GITHUB_WORKSPACE" && GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK bun "$GEK_HOME/src/cli.ts" check . --check=mechanical
+  gek-identity:
+    runs-on: [self-hosted, gek-host]
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - run: cd "$GITHUB_WORKSPACE" && GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK bun "$GEK_HOME/src/cli.ts" check . --check=identity
+  gek-judge:
+    runs-on: [self-hosted, gek-host]
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - run: cd "$GITHUB_WORKSPACE" && GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK bun "$GEK_HOME/src/cli.ts" check . --check=judge
