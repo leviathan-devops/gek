@@ -6,7 +6,7 @@ import { refuse } from "./tokens.ts";
 export const sha256 = (p: string): string => createHash("sha256").update(readFileSync(p)).digest("hex");
 
 export interface Manifest {
-  project: string; root: string;
+  project: string; root: string; remote?: string;
   authority: string[]; oracles: { path: string; metric: string }[];
   evidence: { claims: string[]; requires_oracle_metric: boolean };
   phases: { id: string; turns: string[]; tokens?: string[]; allow?: string[]; deny?: string[] }[];
@@ -21,6 +21,7 @@ export function loadManifest(dir: string): Manifest {
   const m: Manifest = {
     project: /project:\s*(.+)/.exec(text)?.[1]?.trim() ?? refuse("GEK_SPEC_MISSING", "project: missing"),
     root: /root:\s*(.+)/.exec(text)?.[1]?.trim() ?? refuse("GEK_SPEC_MISSING", "root: missing"),
+    remote: /remote:\s*(.+)/.exec(text)?.[1]?.trim(),
     authority: grab(/^\s*-\s*(design\/[^\s#]+\.md)\s*$/gm),
     oracles: [...text.matchAll(/^\s*-\s*path:\s*(\S+).*metric:\s*(\S+)/gm)].map((x) => ({ path: x[1], metric: x[2] })),
     evidence: {
@@ -43,7 +44,7 @@ export function loadManifest(dir: string): Manifest {
   return m;
 }
 
-export interface Lock { schema: number; project: string; root: string; authority: Record<string, string>; oracles: Record<string, string>; gate_spec: string; thresholds?: string; armed: boolean; server_checks: string[] }
+export interface Lock { schema: number; project: string; root: string; remote?: string; authority: Record<string, string>; oracles: Record<string, string>; gate_spec: string; thresholds?: string; armed: boolean; server_checks: string[] }
 export function loadLock(dir: string): Lock | null {
   const p = `${dir}/GEK.lock`;
   if (!existsSync(p)) return null;
