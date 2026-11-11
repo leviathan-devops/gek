@@ -49,7 +49,9 @@ export function compile(dir: string): { gate_spec: string; predicates: number; d
   // FAIL-CLOSED ORACLE PARSE (battery finding A, 2026-11-12: a two-line oracle section parsed to
   // zero and the operator's ground truth was NEVER pinned in production). A declared-oracles
   // section that yields no pin refuses the compile by name.
-  if (/^oracles:\s*$/m.test(readFileSync(`${dir}/GEK.md`, "utf8")) && m.oracles.length === 0)
+  const mdText = readFileSync(`${dir}/GEK.md`, "utf8");
+  const oracleSectionHasEntries = /^oracles:\s*\n\s*-\s+/m.test(mdText);
+  if (oracleSectionHasEntries && m.oracles.length === 0)
     refuse("GEK_ORACLE_MISSING", "GEK.md declares an oracles: section but no 'path:' + 'metric:' pair parsed — every declared oracle MUST pin. Remedy: check the section format (path line, metric line)");
   push({ kind: "root_identity", anchor: lineOf("root:") });
   for (const rel of m.authority) push({ kind: "authority_pin", anchor: `${rel}:1` });

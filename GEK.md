@@ -8,5 +8,6 @@ evidence:
   claims: [complete, proven, verified, PASS]
   requires_oracle_metric: true
 phases:
-## phase P1 | turns: P1 scaffold | allow: src/**, design/**, tests/**, corpus/**, docs/**, GEK.md, GEK.lock, gate-spec.json, thresholds.json, .github/**, package.json, tsconfig.json, bun.lock | deny: runtime/**
+## phase P1 | turns: P1 scaffold | allow: src/**, design/**, tests/**, corpus/**, docs/**, Checkpoints/**, locks/**, GEK.md, GEK.lock, gate-spec.json, thresholds.json, .github/**, package.json, tsconfig.json, bun.lock | deny: runtime/**
+
 remote: https://github.com/leviathan-devops/gek.git
