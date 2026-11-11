@@ -21,7 +21,7 @@ switch (verb) {
     const r = compile(dir);
     const authority: Record<string, string> = {}; for (const rel of m.authority) authority[rel] = sha256(`${dir}/${rel}`);
     const oracles: Record<string, string> = {}; for (const o of m.oracles) oracles[o.path] = sha256(`${dir}/${o.path}`);
-    writeLock(dir, { schema: 1, project: m.project, root: m.root, authority, oracles, gate_spec: sha256(`${dir}/gate-spec.json`), armed: false, server_checks: ["gek-mechanical", "gek-judge", "gek-identity"] });
+    writeLock(dir, { schema: 1, project: m.project, root: m.root, ...(m.remote ? { remote: m.remote } : {}), authority, oracles, gate_spec: sha256(`${dir}/gate-spec.json`), armed: false, server_checks: ["gek-mechanical", "gek-judge", "gek-identity"] });
     console.log(JSON.stringify({ ok: true, predicates: r.predicates, dropped: r.dropped, gate_spec: `${dir}/gate-spec.json` }));
     process.exit(r.dropped.length ? 0 : 0);
   }

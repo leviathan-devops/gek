@@ -9,3 +9,4 @@ evidence:
   requires_oracle_metric: true
 phases:
 ## phase P1 | turns: P1 scaffold | allow: src/**, design/**, tests/**, corpus/** | deny: runtime/**
+remote: https://github.com/leviathan-devops/gek.git

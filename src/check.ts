@@ -26,7 +26,9 @@ export async function check(opts: CheckOpts, c: Commit): Promise<{ verdict: "PAS
   const oracleMap: Record<string, string> = {};
   for (const o of spec.oracles) oracleMap[o.path] = lock.oracles[o.path] ?? "";
   const thresholdsFresh = existsSync(`${opts.dir}/thresholds.json`);
-  const ctx = { root: lock.root, toplevel: opts.dir, authority: spec.authority_sha, oracles: oracleMap, thresholdsFresh };
+  let remote = "";
+  try { remote = Bun.spawnSync(["git", "-C", opts.dir, "remote", "get-url", "origin"], { stdout: "pipe" }).stdout.toString().trim(); } catch { /* no remote (explain context) */ }
+  const ctx = { root: lock.root, toplevel: opts.dir, remote, authority: spec.authority_sha, oracles: oracleMap, thresholdsFresh };
 
   let claimDetected = false;
   for (const pred of spec.predicates) {

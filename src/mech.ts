@@ -12,12 +12,21 @@ const glob = (pat: string, p: string): boolean => {
   return re.test(p);
 };
 
-export function evaluate(pred: { kind: string; expect?: string; in?: string; allow?: string[]; deny?: string[]; claims?: string[]; requires_oracle_metric?: boolean; anchor: string }, c: Commit, ctx: { root: string; toplevel: string; authority: Record<string, string>; oracles: Record<string, string>; thresholdsFresh: boolean }): Result {
+export function evaluate(pred: { kind: string; expect?: string; in?: string; allow?: string[]; deny?: string[]; claims?: string[]; requires_oracle_metric?: boolean; anchor: string }, c: Commit, ctx: { root: string; toplevel: string; remote?: string; authority: Record<string, string>; oracles: Record<string, string>; thresholdsFresh: boolean }): Result {
   const ok = (): Result => ({ pass: true, anchor: pred.anchor });
   const bad = (token: Token, detail: string): Result => ({ pass: false, token, detail, anchor: pred.anchor });
   switch (pred.kind) {
-    case "root_identity":
+    case "root_identity": {
+      // SERVER IDENTITY = THE REGISTERED REMOTE (a runner checkout lives anywhere); the local
+      // path check remains for the explain context. Normalized: git@h:o/r == https://h/o/r.git
+      const norm = (x: string): string => x.replace(/^git@([^:]+):/, "https://$1/").replace(/\.git$/, "").toLowerCase().replace(/\/$/, "");
+      const want = (ctx as { remote?: string }).remote;
+      if (want) {
+        if (!ctx.remote) return bad("GEK_WORKSPACE_FOREIGN", "no origin remote on this checkout — a server check requires one");
+        return norm(ctx.remote) === norm(want) ? ok() : bad("GEK_WORKSPACE_FOREIGN", `remote ${ctx.remote} != registered ${want}`);
+      }
       return ctx.toplevel === ctx.root ? ok() : bad("GEK_WORKSPACE_FOREIGN", `commit root ${ctx.toplevel} != registered ${ctx.root}`);
+    }
     case "authority_pin":
       for (const [rel, sha] of Object.entries(ctx.authority)) {
         let disk: string;
