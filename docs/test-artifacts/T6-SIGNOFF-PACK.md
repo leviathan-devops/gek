@@ -21,16 +21,20 @@
 - T5 runner supervised + the minute alert timer (gek-runner-poll.timer; GEK_SERVER_TIER_DOWN rows).
 - T7 second project: 5 commands → 6 anchored predicates (anchorless rules dropped+reported).
 
-## P7 state (this pack's open items)
-- plutus-vision-v5 public: bootstrap (step_agent lineage) + replay-failure-run (the 25-commit
-  failure run, tip 7f88717) pushed. Attach PR #1 carries GEK.md/lock/gate-spec/thresholds/workflow.
-- BLOCKED-IN-PROGRESS: after an invalid-YAML push the v5 workflow stopped creating runs; the
-  enable endpoint was called; the GitHub API is rate-limited until ~21:00Z, blocking registry
-  inspection. Runner B online+listening (no dispatch = no run exists).
-- Next: verify the workflow registry post-reset, attach PR green → merge, protect the base,
-  open the replay PR, prove the server-side REJECT, then this pack closes.
+## P7/T6 — CLOSED (2026-11-12 03:00 UTC)
+- plutus-vision-v5 public, rebuilt clean: bootstrap (step_agent lineage) + the MERGED attach
+  (PR #1: manifest, 25-predicate gate-spec, the operator oracle byte-identical + sha-pinned,
+  v2 thresholds, the three checks) + replay-failure-run (the true 7f88717 tip).
+- Branch protection on bootstrap: strict, enforce_admins, the three gek checks required.
+- THE REPLAY (PR #2): gek-judge REJECT(GEK_CLAIM_WITHOUT_ORACLE) — the m1-complete commit class
+  is physically unmergeable. Proof: docs/test-artifacts/t6-replay-rejected.txt.
+- The attach itself survived five honest rejections on its way in (scope x3, unknown predicate,
+  authority anchor routing, claim-without-oracle on its own author's commit words) — each fixed
+  at the cause, each named. The gate judged its own installer by the same law.
+- GEK repo main carries the complete kernel (PR8 runtime + PR10 ceremony/spec, all three checks
+  green on each merge); the project-gek skill is published (managed-skills/project-gek).
 
-## The honest gaps
+## The honest gaps (final)
 - The judge layer is advisory by measurement (4B discrimination ceiling on real diffs); the
   mechanical layer carries the gate. Ceremony/infra classes are mechanical (GEK_CEREMONY);
   ~9 of 40 corpus rows remain uncategorized-by-any-detector (long tail, in the report).

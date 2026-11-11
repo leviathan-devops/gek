@@ -12,7 +12,7 @@ const glob = (pat: string, p: string): boolean => {
   return re.test(p);
 };
 
-export function evaluate(pred: { kind: string; expect?: string; in?: string; allow?: string[]; deny?: string[]; claims?: string[]; requires_oracle_metric?: boolean; anchor: string }, c: Commit, ctx: { root: string; toplevel: string; remote?: string; authority: Record<string, string>; oracles: Record<string, string>; thresholdsFresh: boolean }): Result {
+export function evaluate(pred: { kind: string; expect?: string; in?: string; allow?: string[]; deny?: string[]; claims?: string[]; requires_oracle_metric?: boolean; anchor: string }, c: Commit, ctx: { root: string; toplevel: string; remote?: string; authority: Record<string, string>; oracles: Record<string, string>; thresholdsFresh: boolean; specPin?: string; lockAnchor?: string; thresholdsPin?: string }): Result {
   const ok = (): Result => ({ pass: true, anchor: pred.anchor });
   const bad = (token: Token, detail: string): Result => ({ pass: false, token, detail, anchor: pred.anchor });
   switch (pred.kind) {
@@ -44,6 +44,26 @@ export function evaluate(pred: { kind: string; expect?: string; in?: string; all
       }
       if (ctx.oracles["__selfauth__"]) return bad("GEK_ORACLE_SELF_AUTHORED", "an oracle file was modified by the committer");
       return ok();
+    case "spec_pin": {
+      // the gate-spec is the GATE ITSELF: a committer who weakens it must never pass.
+      // Pin: the spec's sha256 must equal the lock's gate_spec AND the kernel-side anchor
+      // (GEK_HOME/locks/<project>.lock) — an anchor outside the repo the committer controls.
+      const specSha = createHash("sha256").update(readFileSync(`${ctx.toplevel}/gate-spec.json`)).digest("hex");
+      if (ctx.specPin && specSha !== ctx.specPin) return bad("GEK_SPEC_DRIFT", `gate-spec sha ${specSha.slice(0, 12)} != pinned ${ctx.specPin.slice(0, 12)} — the gate itself was modified. Remedy: restore the spec or land a recompile+recalibrate with an operator ticket`);
+      return ok();
+    }
+    case "lock_pin": {
+      const lockSha = createHash("sha256").update(readFileSync(`${ctx.toplevel}/GEK.lock`)).digest("hex");
+      if (ctx.lockAnchor && lockSha !== ctx.lockAnchor) return bad("GEK_LOCK_DRIFT", `GEK.lock sha ${lockSha.slice(0, 12)} != the kernel-side anchor ${ctx.lockAnchor.slice(0, 12)} — the pins were tampered. Remedy: operator re-anchors via gek install`);
+      return ok();
+    }
+    case "thresholds_pin": {
+      let thSha: string;
+      try { thSha = createHash("sha256").update(readFileSync(`${ctx.toplevel}/thresholds.json`)).digest("hex"); }
+      catch { return ok(); }   // absent thresholds -> the armed gate refuses separately
+      if (ctx.thresholdsPin && thSha !== ctx.thresholdsPin) return bad("GEK_THRESHOLDS_DRIFT", `thresholds sha ${thSha.slice(0, 12)} != pinned — recalibration requires an operator ticket`);
+      return ok();
+    }
     case "armed":
       return ctx.thresholdsFresh ? ok() : bad("GEK_NOT_ARMED", "thresholds.json absent or stale — gek calibrate must run before the evidence class passes");
     case "scope": {
@@ -64,7 +84,10 @@ export function evaluate(pred: { kind: string; expect?: string; in?: string; all
     }
     case "evidence_class": {
       const claims = pred.claims ?? [];
-      const hit = claims.find((cl) => new RegExp(`\\b${cl}\\b`, "i").test(c.message));
+      const claimRe = (cl: string) => new RegExp(`\\b${cl}\\b`, "i");
+      const hit = claims.find((cl) => claimRe(cl).test(c.message))
+        ?? (/\b(turn|phase)\b.{0,24}\b(done|complete|completed|finished|green|pass)\b/i.test(c.message) ? "turn-complete" : undefined)
+        ?? (/\bP\d\b.{0,24}\b(done|complete|completed|finished)\b/i.test(c.message) ? "phase-complete" : undefined);
       if (!hit) return ok();
       const hasOracle = (c.evidence?.observables ?? []).some((o) => o.kind === "oracle_metric" && typeof o.value === "number");
       return pred.requires_oracle_metric && !hasOracle

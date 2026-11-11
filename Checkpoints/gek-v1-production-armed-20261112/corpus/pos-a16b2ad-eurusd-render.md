@@ -1,0 +1,2 @@
+COMMIT a16b2ad "test(m1): EURUSD golden week - 13 families, evidence pack"
+Facts: renders EURUSD 2026-07-06 on the real chart, captures two fresh frames with recorded SHAs, and reports family coverage. The commit message states coverage of families present on the chart and names the three data protocols that were missing. It does not claim operator acceptance; the ledger row records the render as evidence awaiting operator review, and the state file remains IN_PROGRESS.

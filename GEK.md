@@ -5,8 +5,9 @@ authority:
   - design/DESIGN_BLUEPRINT_GEK_V1.md
 oracles:
 evidence:
-  claims: [complete, proven, verified, PASS]
+  claims: []   # the kernel repo declares NO oracle — no claim class may demand one; projects WITH oracles list their claim words here
   requires_oracle_metric: true
 phases:
-## phase P1 | turns: P1 scaffold | allow: src/**, design/**, tests/**, corpus/**, docs/**, GEK.md, GEK.lock, gate-spec.json, thresholds.json, .github/**, package.json, tsconfig.json, bun.lock | deny: runtime/**
+## phase P1 | turns: P1 scaffold | allow: src/**, design/**, tests/**, corpus/**, docs/**, Checkpoints/**, locks/**, GEK.md, GEK.lock, gate-spec.json, thresholds.json, .github/**, package.json, tsconfig.json, bun.lock | deny: runtime/**
+
 remote: https://github.com/leviathan-devops/gek.git

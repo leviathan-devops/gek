@@ -23,7 +23,7 @@ export function loadManifest(dir: string): Manifest {
     root: /root:\s*(.+)/.exec(text)?.[1]?.trim() ?? refuse("GEK_SPEC_MISSING", "root: missing"),
     remote: /remote:\s*(.+)/.exec(text)?.[1]?.trim(),
     authority: grab(/^\s*-\s*(design\/[^\s#]+\.md)\s*$/gm),
-    oracles: [...text.matchAll(/^\s*-\s*path:\s*(\S+).*metric:\s*(\S+)/gm)].map((x) => ({ path: x[1], metric: x[2] })),
+    oracles: [...text.matchAll(/^\s*-\s*path:\s*(\S+)\s*$\n^\s*metric:\s*(\S+)\s*$/gm), ...text.matchAll(/^\s*-\s*path:\s*(\S+)\s+metric:\s*(\S+)\s*$/gm)].map((x) => ({ path: x[1], metric: x[2] })),
     evidence: {
       claims: [...text.matchAll(/claims:\s*\[([^\]]*)\]/gm)].flatMap((x) => x[1].split(",").map((s) => s.trim()).filter(Boolean)),
       requires_oracle_metric: /requires_oracle_metric:\s*true/.test(text),

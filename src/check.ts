@@ -1,6 +1,7 @@
 // src/check.ts — THE execution order (blueprint §5): identity → pins → armed → mech → card+judge → ledger.
 // Runs identically on the runner (--server) and for --explain; exit 0 PASS / exit 2 REJECT / exit 1 internal.
 import { readFileSync, existsSync, mkdirSync, appendFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { Refusal, refuse } from "./tokens.ts";
 import { loadManifest, loadLock } from "./config.ts";
 import { evaluate, type Commit } from "./mech.ts";
@@ -10,13 +11,19 @@ import { askJudge } from "./judge.ts";
 export interface CheckOpts { surface: "server" | "explain"; check?: "mechanical" | "judge" | "identity"; dir: string }
 
 function lawExtract(dir: string, anchors: string[], cap = 4000): string {
+  // SCHEME-ROUTED resolution (not a ladder): gek:// anchors are the kernel's own authority and
+  // resolve against GEK_HOME; bare paths are the project's and resolve against the checkout.
+  const GEK = process.env.GEK_HOME ?? "/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK";
   const byFile = new Map<string, number[]>();
   for (const a of anchors) { const f = a.split(":")[0]; const l = Number(a.split(":")[1]); if (f && l) { if (!byFile.has(f)) byFile.set(f, []); byFile.get(f)!.push(l); } }
   const parts: string[] = [];
   for (const [f, lines] of byFile) {
+    const isKernel = f.startsWith("gek://");
+    const base = isKernel ? GEK : dir;
+    const path = isKernel ? `${base}/${f.slice(6)}` : `${base}/${f}`;
     let txt: string[];
-    try { txt = readFileSync(`${dir}/${f}`, "utf8").split("\n"); }
-    catch { console.error(`GEK_AUTHORITY_MISSING: anchor file ${f} named by the gate-spec is unreadable - the law extract is never silently shortened. Remedy: restore the pinned authority file or recompile the gate-spec.`); process.exit(2); }
+    try { txt = readFileSync(path, "utf8").split("\n"); }
+    catch { console.error(`GEK_AUTHORITY_MISSING: anchor file ${f} named by the gate-spec is unreadable at ${path} - the law extract is never silently shortened. Remedy: restore the pinned authority file or recompile the gate-spec.`); process.exit(2); }
     for (const l of lines) parts.push(`${f}:${l}: ${txt[l - 1]?.slice(0, 200) ?? ""}`);
   }
   return parts.join("\n").slice(0, cap);
@@ -31,8 +38,29 @@ export async function check(opts: CheckOpts, c: Commit): Promise<{ verdict: "PAS
   const thresholdsFresh = existsSync(`${opts.dir}/thresholds.json`);
   let remote = "";
   try { remote = Bun.spawnSync(["git", "-C", opts.dir, "remote", "get-url", "origin"], { stdout: "pipe" }).stdout.toString().trim(); } catch { /* no remote (explain context) */ }
-  const ctx = { root: lock.root, toplevel: opts.dir, remote, authority: spec.authority_sha, oracles: oracleMap, thresholdsFresh };
+  // kernel-side anchors: GEK_HOME/locks/<project>.lock is OUTSIDE the project repo — the
+  // committer cannot write it. spec/thresholds shas also ride the lock (both pins checked).
+  const GEK = process.env.GEK_HOME ?? "/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK";
+  let lockAnchor = "";
+  try { lockAnchor = readFileSync(`${GEK}/locks/${lock.project}.lock`, "utf8").trim(); } catch { /* absent anchor -> recorded gap on explain surface; server tier REQUIRES it below */ }
+  if (opts.surface === "server" && !lockAnchor) {
+    return { verdict: "REJECT", detail: "REJECT(GEK_LOCK_DRIFT): no kernel-side lock anchor for this project — the server tier refuses to judge against pins the committer controls. Remedy: gek install (re-anchors GEK_HOME/locks/<project>.lock)\n  Authority: gek://DESIGN_BLUEPRINT_GEK_V1.md:246" };
+  }
+  const ctx = { root: lock.root, toplevel: opts.dir, remote, authority: spec.authority_sha, oracles: oracleMap, thresholdsFresh, specPin: lock.gate_spec, lockAnchor: lockAnchor || undefined, thresholdsPin: (lock as { thresholds_sha?: string }).thresholds_sha };
 
+  // KERNEL-LEVEL PINS (before any spec predicate runs — the spec cannot pin itself: an attacker
+  // who weakens the spec deletes its own pin predicate. These assertions live in the kernel
+  // binary, anchored by GEK_HOME being outside the committer's repo.)
+  if (lock.gate_spec) {
+    const diskSpec = createHash("sha256").update(readFileSync(`${opts.dir}/gate-spec.json`)).digest("hex");
+    if (diskSpec !== lock.gate_spec) return { verdict: "REJECT", detail: `REJECT(GEK_SPEC_DRIFT): gate-spec sha ${diskSpec.slice(0, 12)} != the lock's pin ${lock.gate_spec.slice(0, 12)} — the gate itself was modified. Remedy: restore the spec or land a recompile+recalibrate under an operator ticket\n  Authority: gek://DESIGN_BLUEPRINT_GEK_V1.md:246\n  Remedy: gek explain GEK_SPEC_DRIFT` };
+  }
+  const thPin = (lock as { thresholds_sha?: string }).thresholds_sha;
+  if (thPin) {
+    let thDisk = "";
+    try { thDisk = createHash("sha256").update(readFileSync(`${opts.dir}/thresholds.json`)).digest("hex"); } catch { /* armed gate handles absence */ }
+    if (thDisk && thDisk !== thPin) return { verdict: "REJECT", detail: `REJECT(GEK_THRESHOLDS_DRIFT): thresholds sha ${thDisk.slice(0, 12)} != the lock's pin ${thPin.slice(0, 12)} — recalibration requires an operator ticket\n  Authority: gek://DESIGN_BLUEPRINT_GEK_V1.md:246\n  Remedy: gek explain GEK_THRESHOLDS_DRIFT` };
+  }
   let claimDetected = false;
   for (const pred of spec.predicates) {
     // ARMED is handled explicitly below: it gates the EVIDENCE CLASS (a completion claim) and the

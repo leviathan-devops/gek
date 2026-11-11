@@ -1,0 +1,13 @@
+# T6 — THE REPLAY PROOF (2026-11-12 03:00 UTC)
+
+PR: https://github.com/leviathan-devops/plutus-vision-v5/pull/2 — the preserved 25-commit failure run (tip 7f88717) against the protected bootstrap.
+
+gek-mechanical: PASS (the mechanical surface holds for the lineage's code commits)
+gek-identity:   PASS
+gek-judge:      FAIL — REJECT(GEK_CLAIM_WITHOUT_ORACLE): message claims 'complete' but no oracle_metric observable is carried — a completion claim requires operator ground truth
+                 Authority: GEK.md:11 | Remedy: gek explain GEK_CLAIM_WITHOUT_ORACLE
+
+Branch protection (enforce_admins, strict): the merge is physically blocked — the exact
+commit class that consumed 2026-11-11 can no longer land on PLUTUS_VISION.
+
+Verdict captured from the runner's own tee (~/gek-judge.log, mtime 2026-11-12 03:00:03) — the local channel, no API.
