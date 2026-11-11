@@ -21,7 +21,7 @@ switch (verb) {
     const r = compile(dir);
     const authority: Record<string, string> = {}; for (const rel of m.authority) authority[rel] = sha256(`${dir}/${rel}`);
     const oracles: Record<string, string> = {}; for (const o of m.oracles) oracles[o.path] = sha256(`${dir}/${o.path}`);
-    writeLock(dir, { schema: 1, project: m.project, root: m.root, authority, oracles, gate_spec: sha256(`${dir}/gate-spec.json`), armed: false, server_checks: ["gek-mechanical", "gek-judge", "gek-identity"] });
+    writeLock(dir, { schema: 1, project: m.project, root: m.root, ...(m.remote ? { remote: m.remote } : {}), authority, oracles, gate_spec: sha256(`${dir}/gate-spec.json`), armed: false, server_checks: ["gek-mechanical", "gek-judge", "gek-identity"] });
     console.log(JSON.stringify({ ok: true, predicates: r.predicates, dropped: r.dropped, gate_spec: `${dir}/gate-spec.json` }));
     process.exit(r.dropped.length ? 0 : 0);
   }
@@ -33,10 +33,10 @@ switch (verb) {
     const surface = rest.includes("--explain") ? "explain" : "server";
     const checkKind = (rest.find((a) => a.startsWith("--check")) ?? "--check=full").split("=")[1] as never;
     // minimal commit capture for the server context: HEAD diff vs parent, message, evidence row if staged
-    const proc = Bun.spawnSync(["sh", "-c", `cd ${dir} && git log -1 --format=%B && echo --- && git diff HEAD~1 HEAD --stat && echo --- && git diff HEAD~1 HEAD | head -400`], { stdout: "pipe" });
+    const proc = Bun.spawnSync(["sh", "-c", `cd ${dir} && git log -1 --format=%B && echo --- && git diff --name-only HEAD~1 HEAD && echo --- && git diff HEAD~1 HEAD | head -400`], { stdout: "pipe" });
     const out = proc.stdout.toString();
-    const [message, stat, diff] = out.split("\n---\n");
-    const paths = (stat ?? "").split("\n").map((l) => l.split("|")[0].trim()).filter(Boolean);
+    const [message, names, diff] = out.split("\n---\n");
+    const paths = (names ?? "").split("\n").map((l) => l.trim()).filter(Boolean);
     process.exit(await runCheck({ surface, check: checkKind, dir }, { paths, message: message ?? "", evidence: null, diffText: diff ?? "", committer: "" }));
   }
   case "explain": {
