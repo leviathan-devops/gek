@@ -71,6 +71,15 @@ export function evaluate(pred: { kind: string; expect?: string; in?: string; all
         ? bad("GEK_CLAIM_WITHOUT_ORACLE", `message claims '${hit}' but no oracle_metric observable is carried — a completion claim requires operator ground truth`)
         : ok();
     }
+    case "ceremony": {
+      // docs/ledger-only diff + advancement language + no gate token = bookkeeping sold as progress
+      const docsOnly = c.paths.length > 0 && c.paths.every((p2) => /\.(md|jsonl|json)$/.test(p2) && !/(package|tsconfig)\.json$/.test(p2));
+      const codeFiles = c.paths.some((p2) => /\.(ts|js|py|sh|pine|yml|yaml)$/.test(p2));
+      const adv = /(progress|turns? the corner|advanc|reconcil|record|landed|seal|complete|evidence)/i.test(c.message);
+      const hasToken = (c.evidence?.observables ?? []).some((o) => (o as { token?: string }).token) || /(R36|DERIVED|_OK|PV-Gate|GEK_)[A-Z0-9_: -]{3,}/.test(c.message + c.diffText.slice(0, 4000));
+      if (docsOnly && !codeFiles && adv && !hasToken) return bad("GEK_CEREMONY", "docs/ledger-only diff carrying advancement language with no gate token - bookkeeping is not progress; land it under a turn with its named token or fold it into the code commit");
+      return ok();
+    }
     case "constant_traced": {
       for (const line of c.diffText.split("\n")) {
         if (/^\+.*\b\d+\s*\*\s*\d{5,}\b/.test(line) && !/source:/.test(line) && !/\/\//.test(line)) {
