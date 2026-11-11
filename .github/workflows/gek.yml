@@ -26,6 +26,6 @@ jobs:
       - run: |
           cd "$GITHUB_WORKSPACE"
           export GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK
-          { pwd; ls -la; bun "$GEK_HOME/src/cli.ts" check . --check=judge; echo "GEK_JUDGE_STEP_EXIT=$?"; } > "$RUNNER_TEMP/gek-judge-out.txt" 2>&1
-          cat "$RUNNER_TEMP/gek-judge-out.txt"
-          grep -q "GEK_JUDGE_STEP_EXIT=0" "$RUNNER_TEMP/gek-judge-out.txt"
+          { echo "HOME=$HOME TEMP=$RUNNER_TEMP"; pwd; ls -la; bun "$GEK_HOME/src/cli.ts" check . --check=judge; echo "GEK_JUDGE_STEP_EXIT=$?"; } > "$HOME/gek-debug-judge.txt" 2>&1
+          cat "$HOME/gek-debug-judge.txt"
+          grep -q "GEK_JUDGE_STEP_EXIT=0" "$HOME/gek-debug-judge.txt"
