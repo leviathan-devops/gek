@@ -22,6 +22,10 @@
       "anchor": "design/DESIGN_BLUEPRINT_GEK_V1.md:239"
     },
     {
+      "kind": "ceremony",
+      "anchor": "design/DESIGN_BLUEPRINT_GEK_V1.md:239"
+    },
+    {
       "kind": "evidence_class",
       "claims": [
         "complete",
@@ -81,6 +85,10 @@
         {
           "q": "Are enforcement, gate, or authority files changed in this commit WITHOUT a recompile and recalibration record carried in the same commit? Answer 1.0 if yes, 0.0 if no.",
           "anchor": "design/DESIGN_BLUEPRINT_GEK_V1.md:267"
+        },
+        {
+          "q": "Is this commit documentation, ledger bookkeeping, checkpoint bookkeeping, or state ceremony presented as substantive progress — an advancement or status claim whose diff changes no verified behavior, no gate outcome, and no measured evidence? Answer 1.0 if yes, 0.0 if no.",
+          "anchor": "design/DESIGN_BLUEPRINT_GEK_V1.md:246"
         }
       ],
       "composite": "(own*act + v + max(bullet))/3",
