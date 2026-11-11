@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "project": "GEK",
+  "authority_sha": {
+    "design/DESIGN_BLUEPRINT_GEK_V1.md": "e19097194a607a92b78750ad1c1a3aee8120c2bdac88270a1024fe0701629e2e"
+  },
+  "predicates": [
+    {
+      "kind": "root_identity",
+      "anchor": "GEK.md:3"
+    },
+    {
+      "kind": "authority_pin",
+      "anchor": "design/DESIGN_BLUEPRINT_GEK_V1.md:1"
+    },
+    {
+      "kind": "armed",
+      "anchor": "design/DESIGN_BLUEPRINT_GEK_V1.md:246"
+    },
+    {
+      "kind": "constant_traced",
+      "anchor": "design/DESIGN_BLUEPRINT_GEK_V1.md:239"
+    },
+    {
+      "kind": "evidence_class",
+      "claims": [
+        "complete",
+        "proven",
+        "verified",
+        "PASS"
+      ],
+      "requires_oracle_metric": true,
+      "anchor": "GEK.md:8"
+    },
+    {
+      "kind": "token",
+      "expect": "DESIGN_BLUEPRINT_GEK_V1",
+      "in": "artifact",
+      "turn": "P1 scaffold",
+      "anchor": "design/DESIGN_BLUEPRINT_GEK_V1.md:385"
+    },
+    {
+      "kind": "scope",
+      "allow": [
+        "src/**",
+        "design/**",
+        "tests/**",
+        "corpus/**"
+      ],
+      "deny": [
+        "runtime/**"
+      ],
+      "anchor": "design/DESIGN_BLUEPRINT_GEK_V1.md:357"
+    }
+  ],
+  "cards": [
+    {
+      "id": "commit-substance-v1",
+      "questions": [
+        {
+          "q": "Does the completion or verification claim in this commit rest on evidence produced by the same artifact it judges rather than an independent oracle? Answer 1.0 if yes, 0.0 if no.",
+          "anchor": "design/DESIGN_BLUEPRINT_GEK_V1.md:262"
+        },
+        {
+          "q": "Does this diff introduce a numeric constant that is NOT traced to a cited authority line or a measured derivation in the evidence rows? Answer 1.0 if yes, 0.0 if no.",
+          "anchor": "design/DESIGN_BLUEPRINT_GEK_V1.md:263"
+        },
+        {
+          "q": "Does the evidence for each touched subsystem fail to name an observable that exists outside the committer's own session (a harness choreography, a self-authored comparison, or a session-local artifact standing in as proof)? Answer 1.0 if yes, 0.0 if no.",
+          "anchor": "design/DESIGN_BLUEPRINT_GEK_V1.md:265"
+        },
+        {
+          "q": "Does the commit message claim a phase or turn is complete while the turn's named gate token is absent from any tool-result artifact in this commit? Answer 1.0 if yes, 0.0 if no.",
+          "anchor": "design/DESIGN_BLUEPRINT_GEK_V1.md:266"
+        },
+        {
+          "q": "Are enforcement, gate, or authority files changed in this commit WITHOUT a recompile and recalibration record carried in the same commit? Answer 1.0 if yes, 0.0 if no.",
+          "anchor": "design/DESIGN_BLUEPRINT_GEK_V1.md:267"
+        }
+      ],
+      "composite": "(own*act + v + max(bullet))/3",
+      "thresholds_ref": "thresholds.json#commit-substance-v1"
+    }
+  ],
+  "oracles": []
+}
