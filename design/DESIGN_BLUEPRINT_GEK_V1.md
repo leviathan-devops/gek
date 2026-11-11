@@ -2,7 +2,7 @@
 
 Object: a host-side kernel that compiles a project's authority documents (design blueprint + execution workflow) into that project's git commit gates — mechanical predicates + local judge verdicts — enforced server-side on every commit. Universal across projects; no project-specific code.
 
-Manufacture: a TypeScript/Bun CLI (`gek`), a hook bundle installer, a self-hosted GitHub Actions runner, and a calibration harness. Built in the `GEK` repository. Proven on PLUTUS_VISION.
+Manufacture: a TypeScript/Bun CLI (`gek`), a branch-protection/required-check installer, a self-hosted GitHub Actions runner, and a calibration harness. Built in the `GEK` repository. Proven on PLUTUS_VISION.
 
 ---
 
@@ -38,7 +38,7 @@ Secondary constraint: the judge state cap is 24,000 characters and it accepts ba
 L4  VERIFY    calibration · red-team replay · drift monitors · ARMED-0 law
 L3  RENDER    THE ENFORCEMENT: GitHub required checks (self-hosted runner) ·
               the feedback CLI (local, authority-free, gates nothing)
-L2  DELIVER   gate-spec.json · GEK.lock · hook bundle · verdict ledger
+L2  DELIVER   gate-spec.json · GEK.lock · branch protection · verdict ledger
 L1  COMPUTE   spec compiler · card builder · judge client · predicate runtime
 L0  DATA      authority docs · oracle files · labeled corpus · thresholds
 ```
@@ -49,7 +49,7 @@ Dependencies point strictly downward. L3 surfaces are logicless shells invoking 
 |---|---|---|---|---|
 | L0 DATA | operator / filesystem | authority docs, oracles, corpus, labels | operator + kernel | `GEK_AUTHORITY_MISSING` / `GEK_ORACLE_MISSING` refuse the evidence class |
 | L1 COMPUTE | L0 | gate-spec, cards, verdicts, thresholds | kernel | `gek check` unavailable → server tier still runs it; both absent → `GEK_NOT_INSTALLED` |
-| L2 DELIVER | L1 | installed hooks, GEK.lock, ledger rows | kernel | `GEK_NOT_ARMED` — nothing passes |
+| L2 DELIVER | L1 | branch protection + required checks + runner registration, GEK.lock, ledger rows | kernel | `GEK_NOT_ARMED` — nothing passes |
 | L3 RENDER | L2 | verdicts, feedback, check statuses | kernel + git server | local absent → server still mandatory; server absent → `GEK_SERVER_TIER_DOWN` blocks evidence class (fail-closed) |
 | L4 VERIFY | L2 | calibration report, red-team verdicts, drift alarms | kernel | unverified thresholds refuse to arm |
 
@@ -64,7 +64,7 @@ Dependencies point strictly downward. L3 surfaces are logicless shells invoking 
 | JevManager | judge transport (canon detect, 256 KB outbound cap, limiter), calibration method, batching | ported code (`src/judge/transport.ts`, MIT, origin noted) |
 | PLUTUS_VISION commit_gate.py | negative requirements: SHA-pinned context, index-only reads, raw-answer retention | requirements |
 
-Built new in GEK: spec compiler, card builder, predicate runtime, hook installer, calibration harness, runner workflow, `gek` CLI.
+Built new in GEK: spec compiler, card builder, predicate runtime, branch-protection installer, calibration harness, runner workflow, `gek` CLI (feedback + server check share one implementation).
 
 ---
 
@@ -369,7 +369,7 @@ GEK/
   src/judge.ts              :8090 client (canon detect, cap, fail-closed)
   src/mech.ts               predicate runtime (index reads, oracle numerics)
   src/explain.ts            the feedback CLI (local, authority-free — no hook bundle exists)
-  src/install.ts            hook bundle + GEK.lock + runner workflow
+  src/install.ts            branch protection + required checks + runner registration + GEK.lock
   src/calibrate.ts          labels → thresholds (train/holdout/separation)
   src/server/check.yml.tmpl GitHub required checks (self-hosted runner)
   src/ledger.ts             verdicts.jsonl
