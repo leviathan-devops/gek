@@ -14,5 +14,5 @@
     "gek-judge",
     "gek-identity"
   ],
-  "thresholds": "probe-5 (provisional until P5 full-corpus derivation)"
+  "thresholds": "thresholds.json v2 (advisory judge, mechanical gate)"
 }
