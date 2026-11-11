@@ -3,6 +3,7 @@
 import { compile } from "./spec-compile.ts";
 import { loadManifest, loadLock, writeLock, sha256 } from "./config.ts";
 import { runCheck } from "./check.ts";
+import { readFileSync } from "node:fs";
 
 const [verb, ...rest] = Bun.argv.slice(2);
 const dir = rest.find((a) => !a.startsWith("--")) ?? process.cwd();
@@ -37,7 +38,15 @@ switch (verb) {
     const out = proc.stdout.toString();
     const [message, names, diff] = out.split("\n---\n");
     const paths = (names ?? "").split("\n").map((l) => l.trim()).filter(Boolean);
-    process.exit(await runCheck({ surface, check: checkKind, dir }, { paths, message: message ?? "", evidence: null, diffText: diff ?? "", committer: "" }));
+    // Evidence rows: the commit message may cite artifacts with 'Evidence: <path>' lines; they are
+    // loaded into the card's evidence slot (the judge sees the measured numbers, not just a citation).
+    const evidencePaths = [...(message ?? "").matchAll(/^Evidence:\s*(\S+)$/gm)].map((m) => m[1]);
+    let evidence: { observables?: { kind: string; excerpt?: string; source?: string }[] } | null = null;
+    if (evidencePaths.length) {
+      try { evidence = { observables: evidencePaths.map((ep) => ({ kind: "tool_result", source: ep, excerpt: readFileSync(`${dir}/${ep}`, "utf8").slice(0, 1200) })) }; }
+      catch { evidence = { observables: [] }; }
+    }
+    process.exit(await runCheck({ surface, check: checkKind, dir }, { paths, message: message ?? "", evidence, diffText: diff ?? "", committer: "" }));
   }
   case "explain": {
     const t = rest[0] ?? "";
