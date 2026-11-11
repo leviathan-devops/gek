@@ -1,12 +1,14 @@
 // src/card.ts — THE one Shape-S builder (blueprint §6): checks and calibration share this code
 // byte-for-byte. SECTION BYTE BUDGETS (measured 2026-11-11): the judge answers HTTP 500
-// "Processed request exceeds the 4096-token limit" past 4,096 tokens — /health's 24,000-char
-// ceiling is NOT the binding constraint. Budgets (bytes, UTF-8): law 2,000 (never cut mid-line),
-// diff 6,000 (oldest hunks dropped first), message 1,000, evidence 1,500 — total ~10.5k ≈ 2.6k
-// tokens + questions (~250 tokens) — under the limit with headroom.
+// The serving bug that hard-capped requests at 4,096 tokens was fixed 2026-11-11
+// (production_server.py max_input_tokens, now env-tunable, default the model window). MEASURED
+// ceiling on this 12 GB deployment: a 12k-token state passes (usage 8,913t, 3.4 s); 14k+ hits
+// CUDA OOM (model 10.6 GiB + ~350 MiB activations > 12 GB). Budgets (bytes): law 4,000 / diff
+// 16,000 (oldest hunks dropped first) / message 2,000 / evidence 3,000 — ~25k bytes ≈ 6.3k
+// tokens + questions — half the measured ceiling, headroom for batch 32.
 import { refuse } from "./tokens.ts";
 
-export const BUDGET = { law: 2000, diff: 6000, message: 1000, evidence: 1500 } as const;
+export const BUDGET = { law: 4000, diff: 16000, message: 2000, evidence: 3000 } as const;
 
 const cut = (s: string, cap: number): string => (Buffer.byteLength(s, "utf8") <= cap ? s : Buffer.from(s, "utf8").subarray(0, cap).toString("utf8").replace(/\n[^\n]*$/, ""));
 
@@ -24,6 +26,6 @@ export function buildCard(inp: CardInput): { state: string; truncated: boolean }
   if (Buffer.byteLength(diff, "utf8") > BUDGET.diff) { diff = cut(diff, BUDGET.diff); truncated = true; }
   const state = `${law}\n\n>>> ${diff} <<<\n\nCOMMIT MESSAGE:\n${message}\n\nEVIDENCE ROWS:\n${evidence}`;
   const total = Buffer.byteLength(state, "utf8");
-  if (total > 11_000) refuse("GEK_CARD_OVERSIZE", `card is ${total} bytes over the 11,000-byte token-safe budget (law ${Buffer.byteLength(law)}, diff ${Buffer.byteLength(diff)}, message ${Buffer.byteLength(message)}, evidence ${Buffer.byteLength(evidence)})`);
+  if (total > 26_000) refuse("GEK_CARD_OVERSIZE", `card is ${total} bytes over the 26,000-byte budget (law ${Buffer.byteLength(law)}, diff ${Buffer.byteLength(diff)}, message ${Buffer.byteLength(message)}, evidence ${Buffer.byteLength(evidence)}) — the measured judge ceiling is ~12k tokens on this GPU`);
   return { state, truncated };
 }
