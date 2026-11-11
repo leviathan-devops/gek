@@ -1,0 +1,6 @@
+OK  neg-7f88717-m1-complete.md: REJECT :: REJECT(GEK_CLAIM_WITHOUT_ORACLE): message claims 'complete' but no oracle_metric observabl
+OK  neg-7d1e6a9-dxy-render.md: REJECT :: REJECT(GEK_CLAIM_WITHOUT_ORACLE): message claims 'proven' but no oracle_metric observable 
+OK  neg-2f81ff44-magic-constant.md: REJECT :: REJECT(GEK_CONSTANT_UNTRACED): new constant '3 * 86400000' without a source: comment citin
+OK  pos-9511e56-mechanical.md: PASS :: mechanical gate green; judge advisory=ok (max bullet 0.44, t_act 0.55; Q1 p=0.44, Q5 p=0.3
+OK  pos-a16b2ad-eurusd-render.md: PASS :: mechanical gate green; judge advisory=ok (max bullet 0.52, t_act 0.55; Q3 p=0.52, Q1 p=0.4
+OK  dogfood-redteam-decoy.md: REJECT :: REJECT(GEK_CLAIM_WITHOUT_ORACLE): message claims 'verified' but no oracle_metric observabl
