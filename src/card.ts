@@ -2,7 +2,13 @@
 // byte-for-byte. Truncation law: oldest diff hunks dropped first; the law extract is never cut.
 import { refuse } from "./tokens.ts";
 
-export const STATE_CAP = 22_000;   // BYTES (the imajev server caps the state field at 24,000 bytes; UTF-8 multi-byte content made a char cap overshoot — measured: HTTP 500 on the runner)
+export const STATE_CAP = 11_000;   // BYTES ≈ a token-safe budget. MEASURED 2026-11-11: the judge
+                                    // answers HTTP 500 "Processed request exceeds the 4096-token
+                                    // limit" when the state+questions exceed 4,096 tokens. English
+                                    // prose ≈ 4 chars/token, so 11,000 bytes + the question set
+                                    // (~250 tokens) sits under the limit with headroom. The
+                                    // /health "state_char_cap: 24000" is the CHAR ceiling, NOT the
+                                    // binding constraint — the token limit binds first.
 export interface CardInput { law: string; diff: string; message: string; evidence: string }
 
 export function buildCard(inp: CardInput): { state: string; truncated: boolean } {
