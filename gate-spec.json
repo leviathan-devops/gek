@@ -38,17 +38,6 @@
       "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:246"
     },
     {
-      "kind": "evidence_class",
-      "claims": [
-        "complete",
-        "proven",
-        "verified",
-        "PASS"
-      ],
-      "requires_oracle_metric": true,
-      "anchor": "GEK.md:8"
-    },
-    {
       "kind": "token",
       "expect": "DESIGN_BLUEPRINT_GEK_V1",
       "in": "artifact",

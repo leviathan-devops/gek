@@ -7,7 +7,7 @@
     "design/DESIGN_BLUEPRINT_GEK_V1.md": "e19097194a607a92b78750ad1c1a3aee8120c2bdac88270a1024fe0701629e2e"
   },
   "oracles": {},
-  "gate_spec": "7f583698a1d307a51e9bb53184bc3dac9235fbce70f922a420906886d71fe421",
+  "gate_spec": "515edb1875a2a586059622251ec1927a68b8cd6c5b8ae0d96405bada9232dba8",
   "armed": false,
   "server_checks": [
     "gek-mechanical",
