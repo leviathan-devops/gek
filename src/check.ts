@@ -28,12 +28,27 @@ export async function check(opts: CheckOpts, c: Commit): Promise<{ verdict: "PAS
   const thresholdsFresh = existsSync(`${opts.dir}/thresholds.json`);
   const ctx = { root: lock.root, toplevel: opts.dir, authority: spec.authority_sha, oracles: oracleMap, thresholdsFresh };
 
+  let claimDetected = false;
   for (const pred of spec.predicates) {
+    // ARMED is handled explicitly below: it gates the EVIDENCE CLASS (a completion claim) and the
+    // judge leg — never a plain mechanical commit (blueprint §0.4: armed:false blocks the evidence class).
+    if (pred.kind === "armed") continue;
     if (opts.check === "judge" && pred.kind !== "evidence_class" && pred.kind !== "constant_traced") continue;
     if (opts.check === "mechanical" && ["evidence_class", "constant_traced"].includes(pred.kind)) continue;
-    if (opts.check === "identity" && !["root_identity", "authority_pin", "oracle_pin", "armed"].includes(pred.kind)) continue;
+    if (opts.check === "identity" && !["root_identity", "authority_pin", "oracle_pin"].includes(pred.kind)) continue;
     const r = evaluate(pred as never, c, ctx);
+    if (pred.kind === "evidence_class" && r.pass) {
+      const claimsHit = (JSON.parse(readFileSync(`${opts.dir}/gate-spec.json`, "utf8")) as { predicates: { kind: string; claims?: string[] }[] })
+        .predicates.find((x) => x.kind === "evidence_class")?.claims ?? [];
+      claimDetected = claimsHit.some((cl) => new RegExp(`\\b${cl}\\b`, "i").test(c.message));
+    }
     if (!r.pass) return { verdict: "REJECT", detail: `REJECT(${r.token}): ${r.detail}\n  Authority: ${r.anchor}\n  Remedy: gek explain ${r.token}` };
+  }
+  // the armed gate: a completion claim or a judge verdict requires derived thresholds
+  const needsThresholds = claimDetected || opts.check === "judge";
+  if (needsThresholds && !thresholdsFresh && !process.env.GEK_REDTEAM) {
+    const a = spec.predicates.find((x) => x.kind === "armed")?.anchor ?? "gate-spec";
+    return { verdict: "REJECT", detail: `REJECT(GEK_NOT_ARMED): thresholds.json absent or stale — gek calibrate must run before the evidence class passes\n  Authority: ${a}\n  Remedy: gek explain GEK_NOT_ARMED` };
   }
   if (opts.check === "identity" || opts.check === "mechanical") return { verdict: "PASS", detail: "mechanical predicates green" };
 

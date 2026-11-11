@@ -61,7 +61,10 @@ export function compile(dir: string): { gate_spec: string; predicates: number; d
         if (ph.turns.some((t) => line.includes(t))) anchors.push(`${rel}:${i + 1}`);
       });
     }
-    if (ph.tokens) for (const t of ph.tokens) push({ kind: "token", expect: t, in: "message", anchor: anchors[0] ?? "GEK.md:phase" });
+    if (ph.tokens) for (const t of ph.tokens) {
+      const [expect, trigger] = t.split("@");
+      push({ kind: "token", expect, in: "message", ...(trigger ? { trigger } : {}), anchor: anchors[0] ?? "GEK.md:phase" } as never);
+    }
     else if (anchors.length) {
       // harvest long-snake gate tokens from each turn's SECTION (heading line + the following 60 lines)
       const seen = new Set<string>();
@@ -75,7 +78,7 @@ export function compile(dir: string): { gate_spec: string; predicates: number; d
                 const tok = seg[1];
                 if (seen.has(tok) || tok.length < 10 || /^(GEK|HTTP|UTF|JSON|YAML|TIME|DATE)_/.test(tok)) continue;
                 seen.add(tok);
-                push({ kind: "token", expect: tok, in: "artifact", anchor: `${rel}:${j + 1}` });
+                push({ kind: "token", expect: tok, in: "artifact", turn: t, anchor: `${rel}:${j + 1}` } as never);
               }
             }
           }

@@ -45,9 +45,12 @@ export function evaluate(pred: { kind: string; expect?: string; in?: string; all
       return ok();
     }
     case "token": {
+      const trig = (pred as { trigger?: string }).trigger;
+      const turn = (pred as { turn?: string }).turn;
+      if (turn && !c.message.includes(turn)) return ok();   // turn tokens apply to commits executing that turn
+      if (trig && !c.paths.some((p2) => glob(trig, p2))) return ok();   // trigger glob not hit: N/A
       const surface = pred.in === "message" ? c.message : JSON.stringify(c.evidence ?? {}) + c.paths.join(" ");
-      if (pred.in === "artifact" && !surface.includes(pred.expect!)) return bad("GEK_PHASE_TOKEN_MISSING", `'${pred.expect}' absent from the commit's evidence/paths`);
-      if (pred.in === "message" && !surface.includes(pred.expect!)) return bad("GEK_PHASE_TOKEN_MISSING", `'${pred.expect}' absent from the message`);
+      if (!surface.includes(pred.expect!)) return bad("GEK_PHASE_TOKEN_MISSING", `'${pred.expect}' absent from the ${pred.in === "message" ? "message" : "commit's evidence/paths"}`);
       return ok();
     }
     case "evidence_class": {
@@ -61,8 +64,8 @@ export function evaluate(pred: { kind: string; expect?: string; in?: string; all
     }
     case "constant_traced": {
       for (const line of c.diffText.split("\n")) {
-        if (/^\+.*\d{2,}\s*\*\s*\d{5,}/.test(line) && !/source:/.test(line) && !/\/\//.test(line)) {
-          const num = /\d{2,}\s*\*\s*\d{5,}/.exec(line)?.[0];
+        if (/^\+.*\b\d+\s*\*\s*\d{5,}\b/.test(line) && !/source:/.test(line) && !/\/\//.test(line)) {
+          const num = /\d+\s*\*\s*\d{5,}/.exec(line)?.[0];
           return bad("GEK_CONSTANT_UNTRACED", `new constant '${num}' without a source: comment citing authority (line: ${line.slice(0, 100)})`);
         }
       }
