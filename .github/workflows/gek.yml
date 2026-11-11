@@ -1,0 +1,17 @@
+name: gek
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  gek:
+    runs-on: [self-hosted, gek-host]
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: gek-mechanical
+        run: cd "$GITHUB_WORKSPACE" && GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK bun "$GEK_HOME/src/cli.ts" check . --check=mechanical
+      - name: gek-identity
+        run: cd "$GITHUB_WORKSPACE" && GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK bun "$GEK_HOME/src/cli.ts" check . --check=identity
+      - name: gek-judge
+        run: cd "$GITHUB_WORKSPACE" && GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK bun "$GEK_HOME/src/cli.ts" check . --check=judge
