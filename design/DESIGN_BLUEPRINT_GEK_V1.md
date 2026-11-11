@@ -10,19 +10,23 @@ Manufacture: a TypeScript/Bun CLI (`gek`), a hook bundle installer, a self-hoste
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ GIT EXECUTES LOCAL HOOKS WITH THE COMMITTER'S OWN PERMISSIONS: A LOCAL HOOK  │
-│ IS EDITABLE, DELETABLE, AND SKIPPABLE BY THE PROCESS IT POLICES. THE ONLY  │
-│ UNBYPASSABLE ENFORCEMENT SURFACE IS THE GIT SERVER'S REQUIRED CHECKS. THE  │
-│ ONLY JUDGE (SYSTEM ONE, 127.0.0.1:8090) HAS NO PUBLIC ENDPOINT — IT IS     │
-│ REACHABLE ONLY FROM THIS HOST.                                             │
+│ THE ONLY ENFORCEMENT IS THE GIT SERVER: A COMMIT MERGES ONLY WHEN GITHUB'S │
+│ REQUIRED CHECKS RUN `gek check` GREEN. THE CHECKS EXECUTE ON A SELF-HOSTED │
+│ RUNNER ON THIS HOST — THE ONLY MACHINE THAT CAN REACH THE SYSTEM ONE JUDGE │
+│ (127.0.0.1:8090, NO PUBLIC ENDPOINT) AND OUTSIDE THE AGENT'S WRITE ACCESS. │
+│ LOCAL HOOKS CARRY ZERO AUTHORITY: ANY PROCESS RUN ON THE AGENT'S SIDE IS   │
+│ EDITABLE BY THE AGENT AND IS THEREFORE NEVER A GATE. LOCAL SURFACES ARE    │
+│ FEEDBACK-ONLY.                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-The split:
+The architecture this forces:
 
-1. **Two tiers, one card.** Local tier = fast verdict + remediation text (advisory). Server tier = GitHub required checks on a self-hosted runner on this host (mandatory). Both tiers execute the identical `gek check` binary against the identical `gate-spec.json` and build the identical evidence card with the identical builder. Local tier tampering removes only local feedback; enforcement is unaffected.
-2. **Truth is external to the committer.** Authority documents and oracle files are pinned by SHA in `GEK.lock`, readable by the kernel, unwritable by the committer within an enforced commit.
-3. **No verdict without calibration.** Judge thresholds exist only as outputs of the calibration harness (§8). `armed:false` blocks the evidence class everywhere.
+1. **One enforcement surface: the server.** GitHub required checks (`gek-mechanical`, `gek-judge`, `gek-identity`) execute `gek check` on a self-hosted runner on this host. Merge is blocked until all three are green. Nothing the agent can do locally — edit hooks, skip hooks, remove the kernel — changes a server verdict, because the server checks run from its own clean checkout of the gate-spec, thresholds, and lock.
+2. **One feedback surface: local, authority-free.** The local leg is a CLI (`gek check --explain`) that runs the identical check for information only — which rule, which authority line, what to fix, before the agent wastes a push. It gates nothing; deleting it changes nothing; it is never consulted by the enforcement path.
+3. **One shared implementation.** Both surfaces execute the same binary against the same `gate-spec.json` and build the same evidence card with the same builder — so local feedback can never disagree with the server verdict except as a `GEK_BUILDER_DRIFT` alarm.
+4. **Truth is external to the committer.** Authority documents and oracle files are pinned by SHA in `GEK.lock`, readable by the kernel, unwritable by the committer within an enforced commit. The server verifies the lock from its own checkout.
+5. **No verdict without calibration.** Judge thresholds exist only as outputs of the calibration harness (§8). `armed:false` blocks the evidence class everywhere.
 
 Secondary constraint: the judge state cap is 24,000 characters and it accepts batched questions (`/health` 2026-11-11: `imajev-4b`, torch, text+image, batch 32, ~100 ms warm). The card builder truncates by rule — oldest diff hunks dropped first, law text never — and the transport auto-detects the wire shape (TypeSafe `/v1/systemone` vs GGUF `/completion`; detection = one-time `GET /props`; ported from JevManager `src/judge/transport.ts`).
 
@@ -32,8 +36,8 @@ Secondary constraint: the judge state cap is 24,000 characters and it accepts ba
 
 ```
 L4  VERIFY    calibration · red-team replay · drift monitors · ARMED-0 law
-L3  RENDER    local hooks (advisory) · GitHub required checks (mandatory) ·
-              REJECT feedback channel
+L3  RENDER    THE ENFORCEMENT: GitHub required checks (self-hosted runner) ·
+              the feedback CLI (local, authority-free, gates nothing)
 L2  DELIVER   gate-spec.json · GEK.lock · hook bundle · verdict ledger
 L1  COMPUTE   spec compiler · card builder · judge client · predicate runtime
 L0  DATA      authority docs · oracle files · labeled corpus · thresholds
@@ -68,25 +72,22 @@ Built new in GEK: spec compiler, card builder, predicate runtime, hook installer
 
 ```
  agent
-  │ git commit
+  │ git commit / git push                      (plain git — no local gate exists)
   ▼
- .githooks/pre-commit ──────► gek check --surface pre-commit      (≤10 s, advisory + hard mech)
- .githooks/commit-msg ──────► gek check --surface commit-msg      (≤1 s, claims class, no judge)
- .githooks/reference-transaction ► gek check --surface reference  (≤30 s, hard local)
-  │ git push
-  ▼
- .githooks/pre-push ────────► gek check --surface push            (≤30 s, hard local)
-  ▼
- GitHub server
-  ├── check: gek-mechanical  ── gek check --server (clean checkout)
-  ├── check: gek-judge       ── gek check --server
-  └── check: gek-identity    ── gek check --server
-  (required; merge blocked until all three are green)
+ GitHub server  ── THE ENFORCEMENT (the only gate)
+  ├── required check: gek-mechanical ── gek check --server   (clean checkout)
+  ├── required check: gek-judge      ── gek check --server
+  └── required check: gek-identity   ── gek check --server
+  merge blocked until all three green; branch protection refuses bypass
   ▼
  merge
+
+ (optional, informational only — never a gate)
+ agent runs:  gek check --explain   → the exact rule + authority line + remedy
+                                  for the commit it is about to push
 ```
 
-Delta vs the un-enforced path: commits additionally carry evidence rows; three local hooks gain calls; push gains three required checks. Agent workflow (plain git) and operator workflow (PR merge) are otherwise unchanged.
+Delta vs the un-enforced path: push gains three required checks; commits that claim completion carry evidence rows. The agent's git workflow is otherwise unchanged. No local hook gates anything; `--no-verify` is meaningless because there is nothing local to skip.
 
 ---
 
@@ -239,15 +240,12 @@ REJECT payload (exact):
 }
 ```
 
-Surface budgets:
+Surfaces (enforcement and feedback are different objects):
 
-| Surface | Call | Budget | Timeout behavior | Tier |
+| Surface | Kind | Call | Budget | Timeout behavior |
 |---|---|---|---|---|
-| pre-commit | `gek check --surface pre-commit` | 10 s | `GEK_JUDGE_DOWN` blocked-with-resume | advisory verdict; mech hard |
-| commit-msg | `gek check --surface commit-msg` | 1 s | refuse `GEK_PREDICATE_UNEVALUABLE` | hard |
-| reference-transaction | `gek check --surface reference` | 30 s | ref does not move | hard local |
-| pre-push | `gek check --surface push` | 30 s | push blocked | hard local |
-| gek-mechanical / gek-judge / gek-identity | `gek check --server` (clean checkout) | 120 s | check red | MANDATORY |
+| gek-mechanical / gek-judge / gek-identity | **ENFORCEMENT** (GitHub required, self-hosted runner) | `gek check --server` (clean checkout) | 120 s | check red; merge blocked |
+| `gek check --explain` | **FEEDBACK** (local CLI, gates nothing) | same binary, local checkout | 10 s (judge pre-warmed) | prints `GEK_JUDGE_DOWN` + resume note; no gate exists to hold |
 
 Budget sources: judge ~100 ms warm batched (measured 2026-11-11: 5 candidates, 1 request); cold start ≈54 s (VRAM reload) → install-time pre-warm + 10 s advisory ceiling; mech predicates sub-100 ms.
 
@@ -260,8 +258,8 @@ cd <project>
 write GEK.md        (job: gek; authority paths; oracle paths; evidence classes; phases)
 gek compile         → gate-spec.json + GEK.lock       [≠0 exit on anchorless rules]
 gek calibrate       → thresholds.json                 [≠0 until ≥20 labeled negatives]
-gek install         → .githooks/* + lock armed + runner workflow
-upper attach        (client; server tier live)
+gek install         → branch protection + required checks + runner registration (NO local hooks)
+upper attach        (client; unchanged)
 ```
 
 Five commands, zero project code. New authority pair ⇒ new gate-spec on compile; authority edit with lock mismatch ⇒ `GEK_AUTHORITY_DRIFT` until recompiled and recalibrated.
@@ -322,7 +320,7 @@ Every verdict appends to `runtime/gek/verdicts.jsonl` {sha, surface, tier, card_
 | Form-gaming (renames, message edits) | judge scores the card, not the message; server re-derives |
 | Completion claim without oracle | `evidence_class` ⇒ `GEK_CLAIM_WITHOUT_ORACLE` |
 | Uncalibrated gate passing | `armed` ⇒ `GEK_NOT_ARMED`; `GEK_CALIBRATION_STALE` |
-| Client-side bypass | server required checks; reference-transaction local; shells logicless |
+| Client-side bypass | nothing local is a gate; branch protection + required checks refuse bypass (admin override requires operator token, ledgered) |
 | Stale authority (version skew) | `authority_pin` ⇒ `GEK_AUTHORITY_DRIFT`; Q6 |
 | Judge-down silent pass | `GEK_JUDGE_DOWN` fail-closed, ledgered |
 | Vacuous REJECT | calibration asserts ≥1 anchor per red-team REJECT ⇒ `GEK_FEEDBACK_VACUOUS` |
@@ -339,7 +337,7 @@ Failure-token surface (exit 2, remedy text): `GEK_SPEC_MISSING` `GEK_AUTHORITY_M
 | P1 scaffold + CLI | `gek --help` exit 0; tokens registered; repo clean |
 | P2 spec compiler | PLUTUS v5.2 pair → gate-spec with ≥10 anchored predicates + 6 cards; doctored authority flips `GEK_COMPILE_ANCHORLESS`; stale-pair skew test refuses |
 | P3 card + judge | probe corpus judged in 1 request; shaped-card separation passes (max benign composite < min violation composite); equivalence negative control fires |
-| P4 mech + hooks | red-team replay: 7f88717, 7d1e6a9, 2f81ff44 REJECT (≥1 anchor each); benign PASS; `--no-verify` still blocked by reference-transaction; worktree-split fixture proves index-only reads |
+| P4 mech + checks | red-team replay: 7f88717, 7d1e6a9, 2f81ff44 REJECT server-side (≥1 anchor each); benign PASS; hook-deletion fixture: agent removes every local trace of GEK, push still rejected; worktree-split fixture proves the server reads only its own checkout |
 | P5 calibration | TRAIN zero false passes; HOLDOUT ≥90% kept, 0 false; ARMED=true only here |
 | P6 runner + required checks | locally-failing push rejected server-side; green path merges; runner supervised |
 | P7 PLUTUS production attach | public repo; attach+install+calibrate; failure commits replayed as pushes and physically rejected; operator sign-off |
@@ -370,7 +368,7 @@ GEK/
   src/card.ts               THE Shape-S builder (runtime + calibration)
   src/judge.ts              :8090 client (canon detect, cap, fail-closed)
   src/mech.ts               predicate runtime (index reads, oracle numerics)
-  src/hooks/*.tmpl          logicless shells (pre-commit, commit-msg, reference-transaction, pre-push)
+  src/explain.ts            the feedback CLI (local, authority-free — no hook bundle exists)
   src/install.ts            hook bundle + GEK.lock + runner workflow
   src/calibrate.ts          labels → thresholds (train/holdout/separation)
   src/server/check.yml.tmpl GitHub required checks (self-hosted runner)
