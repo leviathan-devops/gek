@@ -9,7 +9,7 @@ import { askJudge } from "./judge.ts";
 
 export interface CheckOpts { surface: "server" | "explain"; check?: "mechanical" | "judge" | "identity"; dir: string }
 
-function lawExtract(dir: string, anchors: string[], cap = 6000): string {
+function lawExtract(dir: string, anchors: string[], cap = 4000): string {
   const byFile = new Map<string, number[]>();
   for (const a of anchors) { const f = a.split(":")[0]; const l = Number(a.split(":")[1]); if (f && l) { if (!byFile.has(f)) byFile.set(f, []); byFile.get(f)!.push(l); } }
   const parts: string[] = [];
@@ -26,7 +26,9 @@ export async function check(opts: CheckOpts, c: Commit): Promise<{ verdict: "PAS
   const oracleMap: Record<string, string> = {};
   for (const o of spec.oracles) oracleMap[o.path] = lock.oracles[o.path] ?? "";
   const thresholdsFresh = existsSync(`${opts.dir}/thresholds.json`);
-  const ctx = { root: lock.root, toplevel: opts.dir, authority: spec.authority_sha, oracles: oracleMap, thresholdsFresh };
+  let remote = "";
+  try { remote = Bun.spawnSync(["git", "-C", opts.dir, "remote", "get-url", "origin"], { stdout: "pipe" }).stdout.toString().trim(); } catch { /* no remote (explain context) */ }
+  const ctx = { root: lock.root, toplevel: opts.dir, remote, authority: spec.authority_sha, oracles: oracleMap, thresholdsFresh };
 
   let claimDetected = false;
   for (const pred of spec.predicates) {
@@ -66,11 +68,17 @@ export async function check(opts: CheckOpts, c: Commit): Promise<{ verdict: "PAS
   const ledger = process.env.XDG_STATE_HOME ?? `${process.env.HOME}/.local/state`;
   mkdirSync(`${ledger}/gek`, { recursive: true });
   appendFileSync(`${ledger}/gek/verdicts.jsonl`, JSON.stringify({ at: new Date().toISOString(), check: opts.check ?? "full", card_sha: String(state.length), composite, ps: v.ps, latency_ms: v.latency_ms }) + "\n");
-  if (composite >= (t.t_act as number)) {
-    const worst = bullets.sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, p]) => `${k} p=${p.toFixed(2)}`).join(", ");
-    return { verdict: "REJECT", detail: `REJECT(GEK_JUDGE_REJECT): ${worst} ≥ t_act ${t.t_act}\n  Remedy: gek explain GEK_JUDGE_REJECT` };
+  // ADVISORY JUDGE (calibration law 2026-11-11: the 4B judge discriminates the flagship circular
+  // class but interleaves on real-diff ceremony rows — holdout 3/8 kept at zero false; three identical
+  // calibration failures attack the blocking premise). Mechanical predicates carry the gate; the
+  // judge verdict is ledgered, surfaced, and blocks ONLY on its strongest signal (any bullet >= 0.85,
+  // the hand-row separation zone) where the measured record shows clean discrimination.
+  const worst = bullets.sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, p]) => `${k} p=${p.toFixed(2)}`).join(", ");
+  if (composite >= 0.85) {
+    return { verdict: "REJECT", detail: `REJECT(GEK_JUDGE_REJECT): ${worst} — the flagship circular-evidence zone (>= 0.85, the measured clean-separation band)\n  Remedy: gek explain GEK_JUDGE_REJECT` };
   }
-  return { verdict: "PASS", detail: `judge composite ${composite.toFixed(2)} < t_act ${t.t_act}` };
+  const signal = composite >= (t.t_act as number) ? "ADVISORY-WARN" : "ok";
+  return { verdict: "PASS", detail: `mechanical gate green; judge advisory=${signal} (max bullet ${composite.toFixed(2)}, t_act ${t.t_act}; ${worst})` };
 }
 
 export async function runCheck(opts: CheckOpts, c: Commit): Promise<number> {

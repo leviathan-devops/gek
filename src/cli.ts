@@ -3,6 +3,7 @@
 import { compile } from "./spec-compile.ts";
 import { loadManifest, loadLock, writeLock, sha256 } from "./config.ts";
 import { runCheck } from "./check.ts";
+import { readFileSync } from "node:fs";
 
 const [verb, ...rest] = Bun.argv.slice(2);
 const dir = rest.find((a) => !a.startsWith("--")) ?? process.cwd();
@@ -21,7 +22,7 @@ switch (verb) {
     const r = compile(dir);
     const authority: Record<string, string> = {}; for (const rel of m.authority) authority[rel] = sha256(`${dir}/${rel}`);
     const oracles: Record<string, string> = {}; for (const o of m.oracles) oracles[o.path] = sha256(`${dir}/${o.path}`);
-    writeLock(dir, { schema: 1, project: m.project, root: m.root, authority, oracles, gate_spec: sha256(`${dir}/gate-spec.json`), armed: false, server_checks: ["gek-mechanical", "gek-judge", "gek-identity"] });
+    writeLock(dir, { schema: 1, project: m.project, root: m.root, ...(m.remote ? { remote: m.remote } : {}), authority, oracles, gate_spec: sha256(`${dir}/gate-spec.json`), armed: false, server_checks: ["gek-mechanical", "gek-judge", "gek-identity"] });
     console.log(JSON.stringify({ ok: true, predicates: r.predicates, dropped: r.dropped, gate_spec: `${dir}/gate-spec.json` }));
     process.exit(r.dropped.length ? 0 : 0);
   }
@@ -33,11 +34,19 @@ switch (verb) {
     const surface = rest.includes("--explain") ? "explain" : "server";
     const checkKind = (rest.find((a) => a.startsWith("--check")) ?? "--check=full").split("=")[1] as never;
     // minimal commit capture for the server context: HEAD diff vs parent, message, evidence row if staged
-    const proc = Bun.spawnSync(["sh", "-c", `cd ${dir} && git log -1 --format=%B && echo --- && git diff HEAD~1 HEAD --stat && echo --- && git diff HEAD~1 HEAD | head -400`], { stdout: "pipe" });
+    const proc = Bun.spawnSync(["sh", "-c", `cd ${dir} && git log -1 --format=%B && echo --- && git diff --name-only HEAD~1 HEAD && echo --- && git diff HEAD~1 HEAD | head -400`], { stdout: "pipe" });
     const out = proc.stdout.toString();
-    const [message, stat, diff] = out.split("\n---\n");
-    const paths = (stat ?? "").split("\n").map((l) => l.split("|")[0].trim()).filter(Boolean);
-    process.exit(await runCheck({ surface, check: checkKind, dir }, { paths, message: message ?? "", evidence: null, diffText: diff ?? "", committer: "" }));
+    const [message, names, diff] = out.split("\n---\n");
+    const paths = (names ?? "").split("\n").map((l) => l.trim()).filter(Boolean);
+    // Evidence rows: the commit message may cite artifacts with 'Evidence: <path>' lines; they are
+    // loaded into the card's evidence slot (the judge sees the measured numbers, not just a citation).
+    const evidencePaths = [...(message ?? "").matchAll(/^Evidence:\s*(\S+)$/gm)].map((m) => m[1]);
+    let evidence: { observables?: { kind: string; excerpt?: string; source?: string }[] } | null = null;
+    if (evidencePaths.length) {
+      try { evidence = { observables: evidencePaths.map((ep) => ({ kind: "tool_result", source: ep, excerpt: readFileSync(`${dir}/${ep}`, "utf8").slice(0, 1200) })) }; }
+      catch { evidence = { observables: [] }; }
+    }
+    process.exit(await runCheck({ surface, check: checkKind, dir }, { paths, message: message ?? "", evidence, diffText: diff ?? "", committer: "" }));
   }
   case "explain": {
     const t = rest[0] ?? "";
