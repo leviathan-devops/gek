@@ -34,7 +34,10 @@ switch (verb) {
     const surface = rest.includes("--explain") ? "explain" : "server";
     const checkKind = (rest.find((a) => a.startsWith("--check")) ?? "--check=full").split("=")[1] as never;
     // minimal commit capture for the server context: HEAD diff vs parent, message, evidence row if staged
-    const proc = Bun.spawnSync(["sh", "-c", `cd ${dir} && git log -1 --format=%B && echo --- && git diff --name-only HEAD~1 HEAD && echo --- && git diff HEAD~1 HEAD | head -400`], { stdout: "pipe" });
+    // THE PR RANGE, not the last commit: on a PR merge the last commit is the merge itself
+    // ("merge main into..."), which launders the violating messages out of HEAD. The server
+    // check aggregates every commit subject in origin/main..HEAD and diffs the whole range.
+    const proc = Bun.spawnSync(["sh", "-c", `cd ${dir} && (git rev-parse --verify origin/main >/dev/null 2>&1 && BASE=origin/main || BASE=HEAD~1; git log --format=%B $BASE..HEAD | head -80; echo ---; git diff --name-only $BASE..HEAD; echo ---; git diff $BASE..HEAD | head -400)`], { stdout: "pipe" });
     const out = proc.stdout.toString();
     const [message, names, diff] = out.split("\n---\n");
     const paths = (names ?? "").split("\n").map((l) => l.trim()).filter(Boolean);
