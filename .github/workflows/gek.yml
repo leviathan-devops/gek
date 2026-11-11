@@ -9,18 +9,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - run: cd "$GITHUB_WORKSPACE" && GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK bun "$GEK_HOME/src/cli.ts" check . --check=mechanical
+      - run: cd "$GITHUB_WORKSPACE" && GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK bun "$GEK_HOME/src/cli.ts" check . --check=mechanical 2>&1 | tee /tmp/gek-step-mechanical.log; test ${PIPESTATUS[0]} -eq 0
   gek-identity:
     needs: [gek-mechanical]
     runs-on: [self-hosted, gek-host]
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - run: cd "$GITHUB_WORKSPACE" && GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK bun "$GEK_HOME/src/cli.ts" check . --check=identity
+      - run: cd "$GITHUB_WORKSPACE" && GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK bun "$GEK_HOME/src/cli.ts" check . --check=identity 2>&1 | tee /tmp/gek-step-identity.log; test ${PIPESTATUS[0]} -eq 0
   gek-judge:
     needs: [gek-identity]
     runs-on: [self-hosted, gek-host]
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - run: cd "$GITHUB_WORKSPACE" && GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK bun "$GEK_HOME/src/cli.ts" check . --check=judge
+      - run: cd "$GITHUB_WORKSPACE" && GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK bun "$GEK_HOME/src/cli.ts" check . --check=judge 2>&1 | tee /tmp/gek-step-judge.log; test ${PIPESTATUS[0]} -eq 0
