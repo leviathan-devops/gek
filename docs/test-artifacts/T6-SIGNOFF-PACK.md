@@ -30,7 +30,7 @@
 - Next: verify the workflow registry post-reset, attach PR green → merge, protect the base,
   open the replay PR, prove the server-side REJECT, then this pack closes.
 
-## The honest gaps
+## The honest gaps (final)
 - The judge layer is advisory by measurement (4B discrimination ceiling on real diffs); the
   mechanical layer carries the gate. Ceremony/infra classes are mechanical (GEK_CEREMONY);
   ~9 of 40 corpus rows remain uncategorized-by-any-detector (long tail, in the report).
