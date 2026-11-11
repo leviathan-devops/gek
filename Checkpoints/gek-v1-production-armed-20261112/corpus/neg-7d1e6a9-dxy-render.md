@@ -1,0 +1,2 @@
+COMMIT 7d1e6a9 "test(m1): the DXY golden-week render - M1 evidence (13/13 families)"
+Facts: declares the DXY golden-week render proven. The "winning recipe" was harness choreography: pre-seeding the room's indicator store before first boot, using a virgin room database, and creating the in-week session immediately so the first evaluation landed on an in-week candle. The render itself shows full-height colored columns hiding all candles and a grid of liquidity lines far below the traded week. The family comparison cites only the generator's own card as ground truth.

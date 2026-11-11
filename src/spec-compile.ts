@@ -46,12 +46,20 @@ export function compile(dir: string): { gate_spec: string; predicates: number; d
   const mdLines = readFileSync(`${dir}/GEK.md`, "utf8").split("\n");
   const lineOf = (needle: string): string => { const i = mdLines.findIndex((l) => l.includes(needle)); return `GEK.md:${i >= 0 ? i + 1 : 1}`; };
 
+  // FAIL-CLOSED ORACLE PARSE (battery finding A, 2026-11-12: a two-line oracle section parsed to
+  // zero and the operator's ground truth was NEVER pinned in production). A declared-oracles
+  // section that yields no pin refuses the compile by name.
+  if (/^oracles:\s*$/m.test(readFileSync(`${dir}/GEK.md`, "utf8")) && m.oracles.length === 0)
+    refuse("GEK_ORACLE_MISSING", "GEK.md declares an oracles: section but no 'path:' + 'metric:' pair parsed — every declared oracle MUST pin. Remedy: check the section format (path line, metric line)");
   push({ kind: "root_identity", anchor: lineOf("root:") });
   for (const rel of m.authority) push({ kind: "authority_pin", anchor: `${rel}:1` });
   for (const o of m.oracles) push({ kind: "oracle_pin", anchor: lineOf(o.path) });
   push({ kind: "armed", anchor: `gek://${BP}:246` });
   push({ kind: "constant_traced", anchor: `gek://${BP}:239` });
   push({ kind: "ceremony", anchor: `gek://${BP}:239` });
+  push({ kind: "spec_pin", anchor: `gek://${BP}:246` });
+  push({ kind: "lock_pin", anchor: `gek://${BP}:246` });
+  push({ kind: "thresholds_pin", anchor: `gek://${BP}:246` });
   if (m.evidence.claims.length)
     push({ kind: "evidence_class", claims: m.evidence.claims, requires_oracle_metric: m.evidence.requires_oracle_metric, anchor: lineOf("claims:") });
 

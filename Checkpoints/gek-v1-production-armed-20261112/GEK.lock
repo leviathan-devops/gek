@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "project": "GEK",
+  "root": "/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK",
+  "remote": "https://github.com/leviathan-devops/gek.git",
+  "authority": {
+    "design/DESIGN_BLUEPRINT_GEK_V1.md": "e19097194a607a92b78750ad1c1a3aee8120c2bdac88270a1024fe0701629e2e"
+  },
+  "oracles": {},
+  "gate_spec": "d6353f52323a196ef2546841b753243f1ac78357fc6fb4691799a0d092aa8ac6",
+  "armed": false,
+  "server_checks": [
+    "gek-mechanical",
+    "gek-judge",
+    "gek-identity"
+  ]
+}
