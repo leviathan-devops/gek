@@ -13,12 +13,14 @@ const BP = "design/DESIGN_BLUEPRINT_GEK_V1.md";
 export const CARDS: Card[] = [{
   id: "commit-substance-v1",
   questions: [
-    { q: "Does the completion or verification claim in this commit rest on evidence produced by the same artifact it judges rather than an independent oracle?", anchor: `${BP}:262` },
-    { q: "Is every numeric constant introduced by this diff traced to a cited authority line or a measured derivation in the evidence rows?", anchor: `${BP}:263` },
-    { q: "Does this commit land in the project's registered root workspace as pinned in GEK.lock?", anchor: `${BP}:264` },
-    { q: "Does the evidence row for each touched subsystem name an observable that exists outside the committer's own session?", anchor: `${BP}:265` },
-    { q: "Does the commit message claim a phase or turn is complete without the turn's named gate token present in a tool-result artifact in this commit?", anchor: `${BP}:266` },
-    { q: "Are changed enforcement, gate, or authority files accompanied by a recompile and recalibration ticket in this same commit?", anchor: `${BP}:267` },
+    // POLARITY LAW: every question reads HIGH = VIOLATION PRESENT, with the jm-measured answer-key
+    // phrasing ("Answer 1.0 if yes, 0.0 if no" — src/judge pattern, JevManager push-gate). Q3
+    // (workspace) is NOT asked: it is the mechanical root_identity predicate, never a judge matter.
+    { q: "Does the completion or verification claim in this commit rest on evidence produced by the same artifact it judges rather than an independent oracle? Answer 1.0 if yes, 0.0 if no.", anchor: `${BP}:262` },
+    { q: "Does this diff introduce a numeric constant that is NOT traced to a cited authority line or a measured derivation in the evidence rows? Answer 1.0 if yes, 0.0 if no.", anchor: `${BP}:263` },
+    { q: "Does the evidence for each touched subsystem fail to name an observable that exists outside the committer's own session (a harness choreography, a self-authored comparison, or a session-local artifact standing in as proof)? Answer 1.0 if yes, 0.0 if no.", anchor: `${BP}:265` },
+    { q: "Does the commit message claim a phase or turn is complete while the turn's named gate token is absent from any tool-result artifact in this commit? Answer 1.0 if yes, 0.0 if no.", anchor: `${BP}:266` },
+    { q: "Are enforcement, gate, or authority files changed in this commit WITHOUT a recompile and recalibration record carried in the same commit? Answer 1.0 if yes, 0.0 if no.", anchor: `${BP}:267` },
   ],
   composite: "(own*act + v + max(bullet))/3",
   thresholds_ref: "thresholds.json#commit-substance-v1",
