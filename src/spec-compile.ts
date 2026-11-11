@@ -37,14 +37,19 @@ export function compile(dir: string): { gate_spec: string; predicates: number; d
   }
   const dropped: string[] = [];
   const predicates: Predicate[] = [];
-  const push = (p: Predicate) => { if (!/:\d+$/.test(p.anchor)) { dropped.push(`${p.kind}@${p.anchor}`); return; } predicates.push(p); };
+  const push = (p: Predicate) => { if (!/:(\d+|[A-Za-z0-9_.\/-]+:\d+)$/.test(p.anchor) && !/:\d+$/.test(p.anchor)) { dropped.push(`${p.kind}@${p.anchor}`); return; } predicates.push(p); };
 
-  push({ kind: "root_identity", anchor: "GEK.md:root" });
-  push({ kind: "armed", anchor: `${BP}:246` });
+  // GEK.md line anchors for the manifest-level rules (an anchor is a resolvable file:line, always)
+  const mdLines = readFileSync(`${dir}/GEK.md`, "utf8").split("\n");
+  const lineOf = (needle: string): string => { const i = mdLines.findIndex((l) => l.includes(needle)); return `GEK.md:${i >= 0 ? i + 1 : 1}`; };
+
+  push({ kind: "root_identity", anchor: lineOf("root:") });
   for (const rel of m.authority) push({ kind: "authority_pin", anchor: `${rel}:1` });
-  for (const o of m.oracles) push({ kind: "oracle_pin", anchor: `GEK.md:oracle:${o.path}` });
+  for (const o of m.oracles) push({ kind: "oracle_pin", anchor: lineOf(o.path) });
+  push({ kind: "armed", anchor: `${BP}:246` });
+  push({ kind: "constant_traced", anchor: `${BP}:239` });
   if (m.evidence.claims.length)
-    push({ kind: "evidence_class", claims: m.evidence.claims, requires_oracle_metric: m.evidence.requires_oracle_metric, anchor: "GEK.md:evidence" });
+    push({ kind: "evidence_class", claims: m.evidence.claims, requires_oracle_metric: m.evidence.requires_oracle_metric, anchor: lineOf("claims:") });
 
   // per-phase: explicit tokens, else extract ALL_DAY_SNAKE gate tokens near the phase's turn headings
   for (const ph of m.phases) {
@@ -56,17 +61,21 @@ export function compile(dir: string): { gate_spec: string; predicates: number; d
     }
     if (ph.tokens) for (const t of ph.tokens) push({ kind: "token", expect: t, in: "message", anchor: anchors[0] ?? "GEK.md:phase" });
     else if (anchors.length) {
-      // harvest unique long-snake tokens from the phase's turn-section line ranges (anchor: first hit)
+      // harvest long-snake gate tokens from each turn's SECTION (heading line + the following 60 lines)
       const seen = new Set<string>();
       for (const rel of m.authority) {
         const lines = texts[rel];
         lines.forEach((line, i) => {
-          if (!ph.turns.some((t) => line.includes(t))) return;
-          for (const seg of line.slice(0, 200).matchAll(TOKEN_RE)) {
-            const tok = seg[1];
-            if (seen.has(tok) || tok.length < 10) return;
-            seen.add(tok);
-            push({ kind: "token", expect: tok, in: "artifact", anchor: `${rel}:${i + 1}` });
+          for (const t of ph.turns) {
+            if (!line.includes(t)) continue;
+            for (let j = i; j < Math.min(i + 60, lines.length); j++) {
+              for (const seg of lines[j].slice(0, 200).matchAll(TOKEN_RE)) {
+                const tok = seg[1];
+                if (seen.has(tok) || tok.length < 10 || /^(GEK|HTTP|UTF|JSON|YAML|TIME|DATE)_/.test(tok)) continue;
+                seen.add(tok);
+                push({ kind: "token", expect: tok, in: "artifact", anchor: `${rel}:${j + 1}` });
+              }
+            }
           }
         });
       }

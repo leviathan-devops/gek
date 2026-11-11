@@ -58,7 +58,7 @@ export async function check(opts: CheckOpts, c: Commit): Promise<{ verdict: "PAS
   return { verdict: "PASS", detail: `judge composite ${composite.toFixed(2)} < t_act ${t.t_act}` };
 }
 
-export function runCheck(opts: CheckOpts, c: Commit): number {
+export async function runCheck(opts: CheckOpts, c: Commit): Promise<number> {
   return check(opts, c).then((r) => { console.log(r.verdict === "PASS" ? r.detail : r.detail); return r.verdict === "PASS" ? 0 : 2; })
     .catch((e: unknown) => { if (e instanceof Refusal) { console.error(`${e.token}: ${e.message}`); return 2; } console.error(`GEK_INTERNAL: ${String(e)}`); return 1; });
 }
