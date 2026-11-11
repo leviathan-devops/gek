@@ -38,10 +38,18 @@ switch (verb) {
     // out of the judged message (measured live: the decoy PR passed on its merge-commit message),
     // and a `|| HEAD~1` fallback would silently narrow the range when the base ref is missing.
     // A missing base refuses by name (fallback-slop law).
-    const baseRef = rest.find((a) => a.startsWith("--base="))?.split("=")[1] ?? process.env.GEK_BASE_REF ?? "origin/main";
+    // THE BASE IS REQUIRED AND SINGLE-SOURCED: no flag->env->default ladder. The workflow passes
+    // --base=origin/$GITHUB_BASE_REF (the tracking-ref form; the bare name is NOT a ref). Absent
+    // flag, empty base, or an unresolvable ref all refuse by name - never a substitute range.
+    const baseArg = rest.find((a) => a.startsWith("--base="))?.split("=")[1]?.trim();
+    if (!baseArg) {
+      console.error("GEK_RANGE_BASE_UNAVAILABLE: --base=<ref> is required on the server check (pass --base=origin/$GITHUB_BASE_REF from the workflow). No default base exists - a default would silently narrow the judged range.");
+      process.exit(2);
+    }
+    const baseRef = baseArg;
     const baseOk = Bun.spawnSync(["sh", "-c", `cd ${dir} && git rev-parse --verify ${baseRef}`], { stdout: "pipe" });
     if (baseOk.exitCode !== 0) {
-      console.error(`GEK_RANGE_BASE_UNAVAILABLE: ${baseRef} is absent - the server check judges the PR RANGE and requires the base ref (pass --base=<ref> or GEK_BASE_REF; actions/checkout fetch-depth: 0 fetches it). A narrowed range would silently hide commits. Remedy: fix the base ref; never fall back.`);
+      console.error(`GEK_RANGE_BASE_UNAVAILABLE: ${baseRef} does not resolve - the server check judges the PR RANGE and requires the base tracking-ref (actions/checkout fetch-depth: 0 fetches it). A narrowed range would silently hide commits. Remedy: pass the fetched tracking-ref form (origin/<branch>); never fall back.`);
       process.exit(2);
     }
     const proc = Bun.spawnSync(["sh", "-c", `cd ${dir} && git log --format=%B ${baseRef}..HEAD | head -80 && echo --- && git diff --name-only ${baseRef}..HEAD && echo --- && git diff ${baseRef}..HEAD | head -400`], { stdout: "pipe" });
