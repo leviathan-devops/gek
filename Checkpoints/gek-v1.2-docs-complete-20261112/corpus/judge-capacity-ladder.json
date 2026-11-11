@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "measured_at": "2026-11-11T19:05Z",
+  "probe": "POST /v1/systemone {state, model: imajev-4b, 1 noul question}; state sized in estimated tokens (~4 chars/token English); usage from the server's own response",
+  "server_fix": "models/servers/imajev/production_server.py max_input_tokens: hard 4096 -> env IMAJEV_MAX_INPUT_TOKENS; systemd drop-in gek-capacity.conf sets 12288",
+  "ladder": [
+    {"state_tokens_est": 3000, "state_chars": 11419, "result": "OK", "usage_tokens": 2317, "latency_s": 2.1},
+    {"state_tokens_est": 6000, "state_chars": 22819, "result": "OK", "usage_tokens": 4517, "latency_s": 1.7},
+    {"state_tokens_est": 9000, "state_chars": 34219, "result": "OK", "usage_tokens": 6717, "latency_s": 2.5},
+    {"state_tokens_est": 12000, "state_chars": 45619, "result": "OK", "usage_tokens": 8917, "latency_s": 3.4},
+    {"state_tokens_est": 14000, "result": "CUDA OOM (fresh allocator: model 10.6 GiB + ~350 MiB activations > 12 GB)", "tried_to_allocate_mib": 366},
+    {"state_tokens_est": 15000, "result": "CUDA OOM", "tried_to_allocate_mib": 348},
+    {"state_tokens_est": 16000, "result": "CUDA OOM"}
+  ],
+  "vram": {"after_12k_batch": "11690 MiB used / 187 MiB free", "model_idle": "10656 MiB used / 1221 MiB free"},
+  "conclusion": "the 4096-token request cap was an artificial server-side limit (fixed); the measured ceiling on this 12 GB deployment is ~12k tokens per request; the model's 16k context exceeds what the VRAM can serve",
+  "budget_derivation": "card budgets law 4000 / diff 16000 / message 2000 / evidence 3000 bytes ~= 6.3k tokens = half the measured ceiling, headroom for the 32-question batch"
+}

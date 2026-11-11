@@ -1,0 +1,36 @@
+name: gek
+on:
+  pull_request:
+jobs:
+  gek-mechanical:
+    runs-on: [self-hosted, gek-host]
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - run: |
+          cd "$GITHUB_WORKSPACE"
+          export GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK
+          /home/leviathan/.bun/bin/bun "$GEK_HOME/src/cli.ts" check . --base="origin/${GITHUB_BASE_REF:?no_base_branch_in_event}" --check=mechanical 2>&1 | tee "$HOME/gek-mechanical.log"
+          test "${PIPESTATUS[0]}" -eq 0
+  gek-identity:
+    needs: [gek-mechanical]
+    runs-on: [self-hosted, gek-host]
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - run: |
+          cd "$GITHUB_WORKSPACE"
+          export GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK
+          /home/leviathan/.bun/bin/bun "$GEK_HOME/src/cli.ts" check . --base="origin/${GITHUB_BASE_REF:?no_base_branch_in_event}" --check=identity 2>&1 | tee "$HOME/gek-identity.log"
+          test "${PIPESTATUS[0]}" -eq 0
+  gek-judge:
+    needs: [gek-identity]
+    runs-on: [self-hosted, gek-host]
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - run: |
+          cd "$GITHUB_WORKSPACE"
+          export GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK
+          /home/leviathan/.bun/bin/bun "$GEK_HOME/src/cli.ts" check . --base="origin/${GITHUB_BASE_REF:?no_base_branch_in_event}" --check=judge 2>&1 | tee "$HOME/gek-judge.log"
+          test "${PIPESTATUS[0]}" -eq 0
