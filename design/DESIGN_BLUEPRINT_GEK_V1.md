@@ -1,8 +1,8 @@
-# DESIGN BLUEPRINT GEK V1 — THE GIT ENFORCEMENT KERNEL (HOST-SIDE, UNIVERSAL)
+# DESIGN BLUEPRINT GEK V1 — GIT ENFORCEMENT KERNEL
 
-Job: enforce any project's design blueprint + execution workflow on every commit, mechanically and with the local System One judge, such that the exact derailment classes measured on 2026-11-11 (PLUTUS VISION V5.2: 25 commits, operator-rejected render, circular evidence, invented constants, wrong workspace, uncalibrated gate) become physically impossible to land.
+Object: a host-side kernel that compiles a project's authority documents (design blueprint + execution workflow) into that project's git commit gates — mechanical predicates + local judge verdicts — enforced server-side on every commit. Universal across projects; no project-specific code.
 
-Repo: `GEK` (fresh, self-contained, host-side). jarvis-upper is a CLIENT of this kernel; the kernel does not import jarvis-upper code. JGM and jm remain siblings: JGM owns worktree topology, jm owns the judge engine; GEK owns commit enforcement.
+Manufacture: a TypeScript/Bun CLI (`gek`), a hook bundle installer, a self-hosted GitHub Actions runner, and a calibration harness. Built in the `GEK` repository. Proven on PLUTUS_VISION.
 
 ---
 
@@ -10,83 +10,83 @@ Repo: `GEK` (fresh, self-contained, host-side). jarvis-upper is a CLIENT of this
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ A LOCAL GIT HOOK IS EXECUTED BY, AND MODIFYABLE BY, THE SAME AGENT IT        │
-│ JUDGES. EVERY CLIENT-SIDE SURFACE IS BYPASSABLE (--no-verify, hooksPath,     │
-│ env, index/worktree splits). THE ONLY UNBYPASSABLE SURFACE IS THE GIT       │
-│ SERVER'S REQUIRED CHECKS — AND THE ONLY JUDGE AVAILABLE (System ONE at      │
-│ 127.0.0.1:8090) IS REACHABLE ONLY FROM THIS HOST.                           │
+│ GIT EXECUTES LOCAL HOOKS WITH THE COMMITTER'S OWN PERMISSIONS: A LOCAL HOOK  │
+│ IS EDITABLE, DELETABLE, AND SKIPPABLE BY THE PROCESS IT POLICES. THE ONLY  │
+│ UNBYPASSABLE ENFORCEMENT SURFACE IS THE GIT SERVER'S REQUIRED CHECKS. THE  │
+│ ONLY JUDGE (SYSTEM ONE, 127.0.0.1:8090) HAS NO PUBLIC ENDPOINT — IT IS     │
+│ REACHABLE ONLY FROM THIS HOST.                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-The split this forces — the load-bearing seam of the whole design:
+The split:
 
-1. **TWO TIERS, ONE CARD.** A fast local tier (advisory verdict + actionable feedback in <2 s, wired into pre-commit/commit-msg/reference-transaction) and a mandatory server tier (GitHub required checks executed by a self-hosted runner ON THIS HOST, which is the only place that can reach :8090 and the only surface `--no-verify` cannot touch). Both tiers evaluate the SAME gate-spec and build the SAME evidence card through the SAME builder — one card, two surfaces, zero drift possible between them.
-2. **TRUTH LIVES OUTSIDE THE AGENT.** Authority documents (the project's blueprint + workflow) and oracle files (operator-authored ground truth) are read by the kernel, pinned by SHA in `GEK.lock`, and never authored by the committer in the same commit they justify. The agent authors neither the question nor the evidence.
-3. **NO VERDICT WITHOUT CALIBRATION.** A gate-spec whose judge thresholds are not derived from a labeled corpus (train zero-false-pass, holdout ≥90% recall kept, separation control green) refuses to arm. ARMED-0 is FAIL, never PASS.
+1. **Two tiers, one card.** Local tier = fast verdict + remediation text (advisory). Server tier = GitHub required checks on a self-hosted runner on this host (mandatory). Both tiers execute the identical `gek check` binary against the identical `gate-spec.json` and build the identical evidence card with the identical builder. Local tier tampering removes only local feedback; enforcement is unaffected.
+2. **Truth is external to the committer.** Authority documents and oracle files are pinned by SHA in `GEK.lock`, readable by the kernel, unwritable by the committer within an enforced commit.
+3. **No verdict without calibration.** Judge thresholds exist only as outputs of the calibration harness (§8). `armed:false` blocks the evidence class everywhere.
 
-A second constraint shapes the judge leg: the local judge has no public endpoint and a 24,000-character state cap (measured `/health` 2026-11-11: `imajev-4b`, torch, text+image, batch 32). The card builder therefore truncates by law (drop oldest diff hunks first, never the law text), and the transport auto-detects the GGUF canon wire vs the TypeSafe `/v1/systemone` wire (measured: a llama-server 404s `/v1/systemone`; the detection is a one-time `GET /props` probe) — ported from JevManager `src/judge/transport.ts`, not re-invented.
+Secondary constraint: the judge state cap is 24,000 characters and it accepts batched questions (`/health` 2026-11-11: `imajev-4b`, torch, text+image, batch 32, ~100 ms warm). The card builder truncates by rule — oldest diff hunks dropped first, law text never — and the transport auto-detects the wire shape (TypeSafe `/v1/systemone` vs GGUF `/completion`; detection = one-time `GET /props`; ported from JevManager `src/judge/transport.ts`).
 
 ---
 
-## §1 THE STACK (planes, one dependency direction)
+## §1 THE STACK
 
 ```
-L4  VERIFY    calibration harness · red-team replay · drift monitors · ARMED-0 law
-L3  RENDER    the enforcement surfaces: local hooks (advisory) + GitHub required
-              checks via self-hosted runner (mandatory) · REJECT feedback channel
-L2  DELIVER   gate-spec.json (compiled) · GEK.lock (pinned SHAs) · hook bundle ·
-              verdict ledger rows
-L1  COMPUTE   spec compiler · Shape-S card builder · System One judge client ·
-              mechanical predicate runtime
-L0  DATA      authority docs (project blueprint+workflow) · oracle files
-              (operator-owned) · failure corpus + gold labels · thresholds
+L4  VERIFY    calibration · red-team replay · drift monitors · ARMED-0 law
+L3  RENDER    local hooks (advisory) · GitHub required checks (mandatory) ·
+              REJECT feedback channel
+L2  DELIVER   gate-spec.json · GEK.lock · hook bundle · verdict ledger
+L1  COMPUTE   spec compiler · card builder · judge client · predicate runtime
+L0  DATA      authority docs · oracle files · labeled corpus · thresholds
 ```
 
-Dependency direction is strictly downward: L4 consumes L2 artifacts produced by L1 over L0 inputs. No plane calls upward. The hook surfaces (L3) are thin shells that only invoke `gek check` — they contain no logic, so they cannot rot and cannot be gamed by editing them without tripping the server tier.
+Dependencies point strictly downward. L3 surfaces are logicless shells invoking `gek check`; they carry no rules and cannot diverge from the kernel.
 
 | Plane | Consumes | Produces | Owner | On failure |
 |---|---|---|---|---|
-| L0 DATA | operator/filesystem | authority docs, oracles, corpus, labels | operator + kernel | `GEK_AUTHORITY_MISSING` / `GEK_ORACLE_MISSING` — loud refusal of the evidence class |
-| L1 COMPUTE | L0 | gate-spec, cards, verdicts, threshold tables | kernel | nothing executes; commits fall to the server tier's identical `gek check` — which also refuses `GEK_NOT_INSTALLED` |
-| L2 DELIVER | L1 | installed hooks, GEK.lock, ledger rows | kernel | `GEK_NOT_ARMED` — no commit passes |
-| L3 RENDER | L2 | verdict + feedback to agent; required-check statuses | kernel + git server | local absent → server still mandatory; server absent → local tier logs `GEK_SERVER_TIER_DOWN` and BLOCKS evidence-class commits (fail-closed) |
+| L0 DATA | operator / filesystem | authority docs, oracles, corpus, labels | operator + kernel | `GEK_AUTHORITY_MISSING` / `GEK_ORACLE_MISSING` refuse the evidence class |
+| L1 COMPUTE | L0 | gate-spec, cards, verdicts, thresholds | kernel | `gek check` unavailable → server tier still runs it; both absent → `GEK_NOT_INSTALLED` |
+| L2 DELIVER | L1 | installed hooks, GEK.lock, ledger rows | kernel | `GEK_NOT_ARMED` — nothing passes |
+| L3 RENDER | L2 | verdicts, feedback, check statuses | kernel + git server | local absent → server still mandatory; server absent → `GEK_SERVER_TIER_DOWN` blocks evidence class (fail-closed) |
 | L4 VERIFY | L2 | calibration report, red-team verdicts, drift alarms | kernel | unverified thresholds refuse to arm |
 
 ---
 
-## §2 THE MACRO ARCHITECTURE IT REUSES
+## §2 THE MACRO ARCHITECTURE (what is reused, what is built)
 
-The kernel mirrors the three-tier pattern already proven on this host, unified:
+| Source | Reused | Form |
+|---|---|---|
+| jarvis-upper | registry entry, required-check names, fence-ledger pattern, `upper attach` as client | pattern only, no code |
+| Jarvis Git Manager | refuse contract: `<TOKEN>: message`, exit 0=JSON / 1=failure / 2=refuse | convention |
+| JevManager | judge transport (canon detect, 256 KB outbound cap, limiter), calibration method, batching | ported code (`src/judge/transport.ts`, MIT, origin noted) |
+| PLUTUS_VISION commit_gate.py | negative requirements: SHA-pinned context, index-only reads, raw-answer retention | requirements |
 
-- **jarvis-upper** (GitHub master kernel): attach pipeline, registry, server-side 8-context rulesets, fence verdict ledger, shape-freeze, phantom scan. GEK reuses the PATTERN (registry entry per project, required-check names, verdict ledger with evidence prefixes) and replaces the client-side wiring: `upper attach` remains the client path; GEK installs its own hook bundle and its own required checks beside upper's.
-- **Jarvis Git Manager**: the refuse primitive (`<TOKEN>: <message>`, exit 2, no git), the exit contract (0 = JSON, 1 = failure, 2 = refuse), observe-only daemon discipline. GEK's CLI adopts this contract verbatim; every token below is a JGM-style refuse.
-- **jm / JevManager**: the judge transport (canon auto-detect, outbound body cap 256 KB, retry/limiter), the calibration method (gold-label first, sweep on train, holdout, separation control, requests=1 batching), and the measured throughput facts (100 questions ≈ 9.2 s; 5 candidates in 1 request measured 2026-11-11).
-- **PLUTUS_VISION commit_gate.py (the failure donor)**: its defects are GEK's negative requirements — grader context hand-pinned to a stale doc version (→ SHA-pinned authority in GEK.lock), plausibility-bar prompt (→ Shape-S composite with per-bullet noul questions), worktree-state reads (→ index-only reads), no oracle (→ oracle files mandatory for evidence classes), never calibrated (→ §10).
-
-GEK inherits no runtime code from jarvis-upper; it shells `jm` only for optional corpus tooling during calibration. The judge wire client is ported (MIT, same author) from JevManager transport with the origin recorded in §13.
+Built new in GEK: spec compiler, card builder, predicate runtime, hook installer, calibration harness, runner workflow, `gek` CLI.
 
 ---
 
-## §3 THE PROCESS IT PRESERVES (and what changed)
-
-Preserved — the operator's existing loop, unchanged from the outside:
+## §3 THE COMMIT PATH (wiring)
 
 ```
-write code → git commit → git push → PR checks green → merge
+ agent
+  │ git commit
+  ▼
+ .githooks/pre-commit ──────► gek check --surface pre-commit      (≤10 s, advisory + hard mech)
+ .githooks/commit-msg ──────► gek check --surface commit-msg      (≤1 s, claims class, no judge)
+ .githooks/reference-transaction ► gek check --surface reference  (≤30 s, hard local)
+  │ git push
+  ▼
+ .githooks/pre-push ────────► gek check --surface push            (≤30 s, hard local)
+  ▼
+ GitHub server
+  ├── check: gek-mechanical  ── gek check --server (clean checkout)
+  ├── check: gek-judge       ── gek check --server
+  └── check: gek-identity    ── gek check --server
+  (required; merge blocked until all three are green)
+  ▼
+ merge
 ```
 
-Changed — what the commit now carries and what the hooks do:
-
-| Step | Before (PLUTUS V5.2 run) | With GEK |
-|---|---|---|
-| commit | message + diff | message + diff + evidence rows (what proves this advances the authority docs) |
-| pre-commit | form gates (doc density, claim words) — gamed by renames | mechanical predicates from the compiled spec + judge verdict on the Shape-S card; REJECT text names the failing bullet and the authority line |
-| commit-msg | claim-word regex | claim-class check: a completion verb requires an oracle-metric row in the same commit |
-| reference-transaction | state-machine + cloud "sanity grader" on stale v5.0 context | the same `gek check` as pre-commit (one implementation); reads the INDEX |
-| push | none | server required checks re-run `gek check` from a clean checkout on the self-hosted runner — `--no-verify` and hook edits die here |
-| workspace | commits landed from a hidden `.worktrees` clone | `GEK_WORKSPACE_FOREIGN` — commits outside the registered root are refused locally and rejected server-side |
-
-The old loop is otherwise untouched: agents keep using plain git; operators keep merging PRs.
+Delta vs the un-enforced path: commits additionally carry evidence rows; three local hooks gain calls; push gains three required checks. Agent workflow (plain git) and operator workflow (PR merge) are otherwise unchanged.
 
 ---
 
@@ -94,13 +94,13 @@ The old loop is otherwise untouched: agents keep using plain git; operators keep
 
 | Component | Consumes | Produces | Invariant | Failure mode |
 |---|---|---|---|---|
-| `GEK.md` (project manifest, one per project) | operator | declared authority paths, oracle paths, evidence classes, phase table | first line `job: gek`; paths exist | `GEK_SPEC_MISSING` — install and all checks refuse |
-| Authority docs (the project's design blueprint + execution workflow) | the project repo | the law text + predicates source | SHA pinned in `GEK.lock`; pinned file immutable during enforcement | `GEK_AUTHORITY_DRIFT` — commit touching them requires `gek compile` + recalibration ticket in the SAME commit |
-| Oracle files (operator ground truth: zone lists, gold images, frozen SHA tables) | operator ONLY | numeric truth the hooks compute against | owner-written, committer-readonly; mtime+SHA in lock | `GEK_ORACLE_MISSING` (evidence-class commits refused) · `GEK_ORACLE_DRIFT` (refused until operator re-pins) · `GEK_ORACLE_SELF_AUTHORED` (oracle modified by the committer → refuse, always) |
-| Failure corpus + gold labels | the project's git history | labeled rows {sha, class VIOLATION/NOT/UNSURE, reason, labeller} | every labeled sha exists in history; ≥20 negatives before arming | `GEK_CORPUS_THIN` — thresholds derive on TRAIN only; arming refused |
-| Threshold table | calibration | {bullet, t_act, t_flag, derived_at, train/heldout stats} | every threshold row cites its sweep | `GEK_CALIBRATION_STALE` — authority SHA changed since derivation |
+| `GEK.md` (per project) | operator | authority paths, oracle paths, evidence classes, phase table | line 1 `job: gek`; all paths exist | `GEK_SPEC_MISSING` |
+| Authority docs | project repo | law text + predicate source | SHA-pinned in `GEK.lock` | `GEK_AUTHORITY_MISSING` / `GEK_AUTHORITY_DRIFT` (edit ⇒ recompile+recalibrate in the same commit) |
+| Oracle files | operator only | numeric ground truth | committer-readonly; SHA+mtime pinned | `GEK_ORACLE_MISSING` / `GEK_ORACLE_DRIFT` / `GEK_ORACLE_SELF_AUTHORED` |
+| Labeled corpus | project git history | rows {sha, class, reason, labeller} | ≥20 negatives before arming; zero gaps | `GEK_CORPUS_THIN` |
+| `thresholds.json` | calibration | {card, bullet, t_act, t_flag, corpus_sha} | every row cites its sweep | `GEK_CALIBRATION_STALE` |
 
-`GEK.lock` schema (exact):
+`GEK.lock` (exact):
 
 ```json
 {
@@ -112,12 +112,32 @@ The old loop is otherwise untouched: agents keep using plain git; operators keep
     "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md": "sha256:…"
   },
   "oracles": { "m1/evidence/operator-zones-eurusd/operator-zones.json": "sha256:…" },
-  "gate_spec": "gate-spec.json sha256:…",
-  "thresholds": "thresholds.json sha256:… + derived_against authority SHAs",
+  "gate_spec": "sha256:…",
+  "thresholds": "sha256:… (derived_against: authority SHAs)",
   "armed": true,
   "server_checks": ["gek-mechanical", "gek-judge", "gek-identity"]
 }
 ```
+
+Corpus row (exact):
+
+```json
+{"sha":"7f88717…","class":"VIOLATION","reason":"m1-complete on circular evidence",
+ "labeller":"L1","card_sha":"…","surface":"reference"}
+```
+
+### Seed corpus (PLUTUS_VISION, labeled 2026-11-11)
+
+| sha | Class | Violation |
+|---|---|---|
+| 7f88717 | VIOLATION | m1-complete committed on circular evidence (chart judged against its own card) |
+| 7d1e6a9 | VIOLATION | "render proven" via harness choreography; render itself defective |
+| 2f81ff44* | VIOLATION | invented `3 * 86400000` constant, no authority citation |
+| d83137c | VIOLATION | state-ceremony commit dressed as progress |
+| a16b2ad | NOT | honest evidence pack: fresh captures, SHAs, no acceptance claim |
+| mechanical module commits | NOT | per-workflow module adds with named gate tokens |
+
+*Reconstructed fixture (original reverted in-session); the transcript is the label's reason. Full run supplies 25 candidate rows; the completeness gate refuses gaps and UNSURE rows above 10%.
 
 ---
 
@@ -125,12 +145,12 @@ The old loop is otherwise untouched: agents keep using plain git; operators keep
 
 | Component | Consumes | Produces | Invariant | Failure mode |
 |---|---|---|---|---|
-| `gek compile` (spec compiler) | authority docs + `GEK.md` | `gate-spec.json` (below) | every predicate/card cites `file:line` of its authority doc; version-pinned — stale-context skew structurally impossible | `GEK_COMPILE_ANCHORLESS` — a rule with no authority anchor is dropped and reported, never silently kept |
-| `gek-card` (Shape-S builder) | the commit (index diff + message + evidence rows) + gate-spec card template | one JSON card {state, questions[]} | byte-identical output given identical inputs — THE ONE BUILDER is shared by runtime and calibration (§10); state ≤24,000 chars by law: drop oldest diff hunks first, law text never | `GEK_CARD_OVERSIZE` — refuse (never silently truncate the law) |
-| `gek-judge` (System One client) | card | verdict {policies per question, composite, latency, requests} | ONE request per card (batch); fail-closed; transport canon-detect + 256 KB outbound cap | `GEK_JUDGE_DOWN` (named BLOCKED + resume condition; never a pass) · `GEK_JUDGE_UNPARSEABLE` (raw answer kept to state dir like the PLUTUS donor did) |
-| `gek-mech` (predicate runtime) | gate-spec predicates + index diff + oracle files | pass/fail per predicate with evidence | reads `git diff --cached` ONLY (the index) — the worktree-split trick is inert; oracle numerics computed here, in-kernel | `GEK_INDEX_READ_FAIL` · `GEK_PREDICATE_UNEVALUABLE` (fail-closed) |
+| `gek compile` | authority docs + `GEK.md` | `gate-spec.json` | every rule carries a resolvable `file:line` anchor | `GEK_COMPILE_ANCHORLESS` (rule dropped + reported) |
+| `gek-card` | index diff + message + evidence rows + card template | card {state, questions[]} | one builder for runtime and calibration; ≤24,000-char state | `GEK_CARD_OVERSIZE` |
+| `gek-judge` | card | verdict {p per bullet, composite, latency} | one batched request; fail-closed | `GEK_JUDGE_DOWN` / `GEK_JUDGE_UNPARSEABLE` (raw answer retained) |
+| `gek-mech` | predicates + index diff + oracles | per-predicate pass/fail | reads `git diff --cached` only | `GEK_INDEX_READ_FAIL` / `GEK_PREDICATE_UNEVALUABLE` |
 
-`gate-spec.json` schema (exact):
+`gate-spec.json` (exact):
 
 ```json
 {
@@ -140,264 +160,244 @@ The old loop is otherwise untouched: agents keep using plain git; operators keep
   "phases": [
     {"id": "P5", "turns": ["P5.TURN-01", "P5.TURN-02", "P5.TURN-03"],
      "predicates": [
-       {"kind": "token", "expect": "PV-Gate: checkpoint", "in": "message", "anchor": "BUILD_WORKFLOW_v5.2…:1207"},
-       {"kind": "scope", "allow": ["m1/**", "design/**"], "deny": ["archive/**", "*.lock"], "anchor": "…:1180"},
-       {"kind": "evidence_class", "claims": ["complete", "proven", "verified"],
-        "requires_oracle_metric": true, "anchor": "…:1363"}
+       {"kind": "token", "expect": "PV-Gate: checkpoint", "in": "message", "anchor": "BUILD_WORKFLOW…:1207"},
+       {"kind": "scope", "allow": ["m1/**", "design/**"], "deny": ["archive/**"], "anchor": "…:1180"},
+       {"kind": "evidence_class", "claims": ["complete", "proven"], "requires_oracle_metric": true, "anchor": "…:1363"}
      ]}
   ],
-  "cards": [{
-    "id": "commit-substance-v1",
-    "questions": ["<noul bullets — verbatim in §6>"],
-    "composite": "(own*act + v + max(bullet))/3",
-    "thresholds_ref": "thresholds.json#commit-substance-v1"
-  }],
+  "cards": [{"id": "commit-substance-v1", "questions": ["…verbatim §6…"],
+             "composite": "(own*act + v + max(bullet))/3", "thresholds_ref": "thresholds.json#commit-substance-v1"}],
   "oracles": [{"path": "…operator-zones.json", "metric": "zone_recall>=0.95", "anchor": "OPERATOR_RULINGS_PV.md:R-15"}]
 }
 ```
 
-### The mechanical predicate catalogue (complete, v1)
+### Predicate catalogue (complete, v1)
 
-| # | Predicate kind | Arguments | Pass condition | Refusal token |
+| # | Kind | Arguments | Pass condition | Token |
 |---|---|---|---|---|
-| 1 | `token` | expect, in {message, ledger-row, artifact} | the exact token present in the named surface | `GEK_PHASE_TOKEN_MISSING` |
-| 2 | `scope` | allow[], deny[] (globs) | every index path matches allow, none matches deny | `GEK_SCOPE_VIOLATION` |
-| 3 | `evidence_class` | claims[], oracle metric | a completion verb in the message ⇒ an oracle-metric row staged in the same commit | `GEK_CLAIM_WITHOUT_ORACLE` |
-| 4 | `constant_traced` | (implicit: diff scan) | every new `\d{2,}\s*\*\s*86400000`-class literal carries a `source:` comment | `GEK_CONSTANT_UNTRACED` |
-| 5 | `root_identity` | GEK.lock root | `git rev-parse --show-toplevel` == registered root | `GEK_WORKSPACE_FOREIGN` |
-| 6 | `index_read` | (implicit) | staged set read from `git diff --cached`; a worktree/index mismatch aborts | `GEK_INDEX_READ_FAIL` |
-| 7 | `authority_pin` | GEK.lock authority map | disk sha == pinned sha | `GEK_AUTHORITY_DRIFT` |
-| 8 | `oracle_pin` | GEK.lock oracle map | disk sha == pinned sha, committer ≠ last oracle author | `GEK_ORACLE_DRIFT` / `GEK_ORACLE_SELF_AUTHORED` |
-| 9 | `armed` | thresholds.json | exists, cites current authority shas, red-team row green | `GEK_NOT_ARMED` |
-| 10 | `anchor_density` | gate-spec | every predicate + card carries a resolvable `file:line` anchor | `GEK_COMPILE_ANCHORLESS` |
+| 1 | `token` | expect, surface ∈ {message, ledger-row, artifact} | token present on the named surface | `GEK_PHASE_TOKEN_MISSING` |
+| 2 | `scope` | allow[], deny[] | every index path in allow, none in deny | `GEK_SCOPE_VIOLATION` |
+| 3 | `evidence_class` | claims[], oracle metric | completion verb ⇒ oracle-metric row staged in-commit | `GEK_CLAIM_WITHOUT_ORACLE` |
+| 4 | `constant_traced` | diff scan | new `\d{2,}\s*\*\s*86400000`-class literal carries `source:` comment | `GEK_CONSTANT_UNTRACED` |
+| 5 | `root_identity` | lock root | `git rev-parse --show-toplevel` == root | `GEK_WORKSPACE_FOREIGN` |
+| 6 | `index_read` | implicit | staged set from `git diff --cached`; mismatch aborts | `GEK_INDEX_READ_FAIL` |
+| 7 | `authority_pin` | lock map | disk sha == pinned sha | `GEK_AUTHORITY_DRIFT` |
+| 8 | `oracle_pin` | lock map | sha equal AND committer ≠ last oracle author | `GEK_ORACLE_DRIFT` / `GEK_ORACLE_SELF_AUTHORED` |
+| 9 | `armed` | thresholds.json | exists, fresh, red-team row green | `GEK_NOT_ARMED` |
+| 10 | `anchor_density` | gate-spec | every rule anchored | `GEK_COMPILE_ANCHORLESS` |
 
-### Evidence-row schema (staged with the commit, exact)
+### Evidence row (staged with the commit, exact)
 
 ```jsonc
 {
   "schema": 1, "turn": "P5.TURN-02", "claim": "render repaired",
   "observables": [
-    {"kind": "oracle_metric", "metric": "zone_recall", "value": 1.00, "source": "m1/evidence/operator-zones-eurusd/operator-zones.json"},
+    {"kind": "oracle_metric", "metric": "zone_recall", "value": 1.00, "source": "…/operator-zones.json"},
     {"kind": "tool_result", "tool": "pinebox shot", "sha256": "…", "captured_at": "2026-11-11T…Z"}
   ]
 }
 ```
 
+### `gek check` execution order (every surface, one path)
+
+```bash
+gek check --surface <pre-commit|commit-msg|reference|push|server> [--server]
+  1 identity    root == lock root                      → GEK_WORKSPACE_FOREIGN
+  2 pins        authority+oracle sha == lock           → GEK_AUTHORITY_DRIFT / GEK_ORACLE_*
+  3 armed       thresholds exist+fresh                 → GEK_NOT_ARMED / GEK_CALIBRATION_STALE
+  4 mech        phase predicates over the INDEX        → per-predicate tokens
+  5 card+judge  Shape-S card → :8090 (skip: commit-msg)→ composite vs thresholds
+  6 ledger      verdict row appended (both tiers)
+  exit 0 PASS | exit 2 REJECT(token+feedback) | exit 1 GEK_INTERNAL (fail-closed)
+```
+
 ---
 
-## §6 L3 — RENDER PLANE: the surfaces and the card
+## §6 L3 — CARD AND SURFACES
 
-The Shape-S card (measured winner, abide corpus 2026-10-31: AUC 0.890 vs 0.747 naive; hard-negative AUC 0.801) — the state carries, in order: the applicable law extract (authority lines for the touched files' phase), the marked diff (`>>> <<<` around changed hunks), the commit message, and the evidence rows. The question set, VERBATIM (one batched request, noul primitive, one claim each):
+Card = law extract (authority lines for the touched files' phase) + marked diff (`>>> <<<`) + message + evidence rows. Question set, VERBATIM (noul, one claim each, one batched request):
 
-| # | Question (verbatim) | Guards the measured failure |
+| # | Question | Detects |
 |---|---|---|
-| Q1 | "Does the completion or verification claim in this commit rest on evidence produced by the same artifact it judges rather than an independent oracle?" | 7f88717 circular m1-complete (probe p=0.68) |
-| Q2 | "Is every numeric constant introduced by this diff traced to a cited authority line or a measured derivation in the evidence rows?" | 2f81ff44 invented 3-session constant (probe p=0.72) |
-| Q3 | "Does this commit land in the project's registered root workspace as pinned in GEK.lock?" | the hidden-.worktrees derailment |
-| Q4 | "Does the evidence row for each touched subsystem name an observable that exists outside the committer's own session?" | 7d1e6a9 harness-choreography "render" (probe MISS at naive card — caught only by the composite + this bullet) |
-| Q5 | "Does the commit message claim a phase or turn is complete without the turn's named gate token present in a tool-result artifact in this commit?" | workflow turns skipped, prose-declared done |
-| Q6 | "Are changed enforcement, gate, or authority files accompanied by a recompile and recalibration ticket in this same commit?" | gate tampering, stale-context skew (the v5.0-vs-v5.2 grader defect) |
+| Q1 | "Does the completion or verification claim in this commit rest on evidence produced by the same artifact it judges rather than an independent oracle?" | circular evidence |
+| Q2 | "Is every numeric constant introduced by this diff traced to a cited authority line or a measured derivation in the evidence rows?" | invented constants |
+| Q3 | "Does this commit land in the project's registered root workspace as pinned in GEK.lock?" | wrong workspace |
+| Q4 | "Does the evidence row for each touched subsystem name an observable that exists outside the committer's own session?" | choreography-as-proof |
+| Q5 | "Does the commit message claim a phase or turn is complete without the turn's named gate token present in a tool-result artifact in this commit?" | prose-declared completion |
+| Q6 | "Are changed enforcement, gate, or authority files accompanied by a recompile and recalibration ticket in this same commit?" | gate/law tampering |
 
-Composite: `(own·act + v + max(bullet))/3` where own = self-authored-span flag, act = the action-under-test flag, v = violation prior. Thresholds come from `thresholds.json` — the derivation law in §8.
+Composite: `(own·act + v + max(bullet))/3`. Card shape measured (abide corpus 2026-10-31): AUC 0.890 vs 0.747 naive; hard-negative AUC 0.801. Naive-card baseline on this kernel's probe (2026-11-11): violations 0.72/0.68/0.25, benign 0.08/0.06 — the row calibration must beat.
 
-**The REJECT feedback payload (exact schema):**
+REJECT payload (exact):
 
 ```jsonc
 {
   "schema": 1, "token": "GEK_JUDGE_REJECT", "card_sha": "…", "surface": "pre-commit",
   "bullets": [{"q": "Q2", "p": 0.81, "anchor": "BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1363"}],
   "remedy": "gek explain GEK_CONSTANT_UNTRACED",
-  "feedback_text": "REJECT(GEK_JUDGE_REJECT): Q2 p=0.81 — numeric constant '3 * 86400000' has no authority citation.\n  Authority: BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1363 (thresholds must cite their derivation).\n  Remedy: cite the authority line in a source comment, or record the measurement in the evidence rows."
+  "feedback_text": "REJECT(GEK_JUDGE_REJECT): Q2 p=0.81 — constant '3 * 86400000' uncited.\n  Authority: BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1363.\n  Remedy: cite the authority line or record the derivation in the evidence rows."
 }
 ```
 
-REJECT feedback contract: the refusal text is the judge's failing bullets + the authority `file:line` each bullet maps to + the exact remedy command (`gek explain <token>`) — injected into the commit-msg template path so the next attempt starts with the diagnosis. A REJECT that cannot name its remedy is a bug class of its own (`GEK_FEEDBACK_VACUOUS` — caught by the calibration harness asserting every red-team REJECT cites ≥1 anchor).
+Surface budgets:
 
-Surfaces: `pre-commit` (advisory verdict, <2 s), `commit-msg` (claim-class + feedback injection), `reference-transaction` (hard local verdict — fires even on `commit --no-verify`), `pre-push` (push-time re-check), GitHub required checks `gek-mechanical` / `gek-judge` / `gek-identity` on a self-hosted runner (mandatory tier; runner label `gek-host`; runs `gek check --server` from a clean checkout, same builder, same thresholds).
+| Surface | Call | Budget | Timeout behavior | Tier |
+|---|---|---|---|---|
+| pre-commit | `gek check --surface pre-commit` | 10 s | `GEK_JUDGE_DOWN` blocked-with-resume | advisory verdict; mech hard |
+| commit-msg | `gek check --surface commit-msg` | 1 s | refuse `GEK_PREDICATE_UNEVALUABLE` | hard |
+| reference-transaction | `gek check --surface reference` | 30 s | ref does not move | hard local |
+| pre-push | `gek check --surface push` | 30 s | push blocked | hard local |
+| gek-mechanical / gek-judge / gek-identity | `gek check --server` (clean checkout) | 120 s | check red | MANDATORY |
 
-
-### `gek check` execution order (the one entrypoint every surface calls)
-
-```bash
-gek check --surface <pre-commit|commit-msg|reference|push|server> [--server]
-  1. identity     root == GEK.lock root            → GEK_WORKSPACE_FOREIGN
-  2. pins         authority + oracle shas == lock  → GEK_AUTHORITY_DRIFT / GEK_ORACLE_DRIFT / SELF_AUTHORED
-  3. armed        thresholds exist + fresh         → GEK_NOT_ARMED / GEK_CALIBRATION_STALE
-  4. mech         every phase predicate over the INDEX staged set (predicate catalogue §5)
-  5. card+judge   Shape-S card → :8090 (skip on commit-msg surface) → composite vs thresholds
-  6. ledger       verdict row appended (both tiers)
-  exit 0 PASS | exit 2 REJECT(token + feedback payload) | exit 1 GEK_INTERNAL (fail-closed)
-```
-
-One entrypoint, one ordering, five surfaces — the surfaces differ only in budget and tier, never in logic. `--server` switches the checkout source (clean clone) and nothing else: byte-equivalence of verdicts between tiers is the invariant the red-team replay asserts (a local PASS + server REJECT on the same sha is a `GEK_BUILDER_DRIFT` alarm, not an anomaly to triage).
+Budget sources: judge ~100 ms warm batched (measured 2026-11-11: 5 candidates, 1 request); cold start ≈54 s (VRAM reload) → install-time pre-warm + 10 s advisory ceiling; mech predicates sub-100 ms.
 
 ---
 
-## §7 L2 — DELIVER PLANE: install path (universal, any project)
+## §7 L2 — INSTALL PATH
 
 ```
 cd <project>
-write GEK.md            (job: gek; authority paths; oracle paths; evidence classes; phases)
-gek compile             → gate-spec.json + GEK.lock        [exit ≠0 on anchorless rules]
-gek calibrate           → thresholds.json                  [exit ≠0 until corpus ≥20 negatives]
-gek install             → .githooks/* + GEK.lock armed + runner workflow
-upper attach <project>  (client path, unchanged) → server tier live
+write GEK.md        (job: gek; authority paths; oracle paths; evidence classes; phases)
+gek compile         → gate-spec.json + GEK.lock       [≠0 exit on anchorless rules]
+gek calibrate       → thresholds.json                 [≠0 until ≥20 labeled negatives]
+gek install         → .githooks/* + lock armed + runner workflow
+upper attach        (client; server tier live)
 ```
 
-### Surface wiring and timing budgets (exact)
-
-| Surface | Invocation | Budget | On timeout | Tier |
-|---|---|---|---|---|
-| pre-commit | `gek check --surface pre-commit` | 10 s (judge pre-warmed) | `GEK_JUDGE_DOWN` BLOCKED-with-resume, never a pass | advisory verdict, hard on mech predicates |
-| commit-msg | `gek check --surface commit-msg` | 1 s (message + evidence rows only, no judge) | refuse `GEK_PREDICATE_UNEVALUABLE` | hard |
-| reference-transaction | `gek check --surface reference` | 30 s | BLOCKED; the ref does not move | hard local |
-| pre-push | `gek check --surface push --remote-head <sha>` | 30 s | BLOCKED push | hard local |
-| gek-mechanical / gek-judge / gek-identity (GitHub) | `gek check --server` from clean checkout | 120 s (Actions) | check fails red | MANDATORY |
-
-Timing facts the budgets trace to: judge ~100 ms warm per question batched (measured 2026-11-11: 5 candidates, 1 request, 0 s cached); cold start ≈54 s (VRAM reload, measured in the jev-engine-operations bible) — hence the pre-warm probe at install time and a 10 s advisory ceiling; mechanical predicates are sub-100 ms local git + sha256sum calls.
-
-
-Five commands, no project-specific code. Universality comes from the compiler: the ONLY project inputs are the two authority documents and the oracle files — the kernel reads them, the kernel derives the predicates, the kernel builds the cards. A new blueprint+workflow pair produces a new gate-spec automatically; a recompile is forced (authority SHA in lock ≠ disk) the moment anyone edits the law.
+Five commands, zero project code. New authority pair ⇒ new gate-spec on compile; authority edit with lock mismatch ⇒ `GEK_AUTHORITY_DRIFT` until recompiled and recalibrated.
 
 ---
 
-## §8 L4 — VERIFY PLANE
+## §8 L4 — CALIBRATION AND VERIFICATION
 
 | Component | Consumes | Produces | Invariant | Failure mode |
 |---|---|---|---|---|
-| `gek calibrate` | gold-labeled corpus + card builder | threshold table + report | train: lowest grid t with ZERO false passes; holdout: 0 false passes AND ≥90% violations kept; separation control each run (a gold violation vs the same span quoted benignly) | `GEK_CALIBRATION_FAILED` — refuses to write thresholds; ARMED-0 stays |
-| red-team replay | the project's archived failure commits (for PLUTUS: the 2026-11-11 corpus, sealed at `Checkpoints/v5.2-F327-render-repair-15plus-IP-zones-pending/`) | per-sha REJECT/PASS verdicts | every planted violation REJECTS with ≥1 anchor; every known-good PASSes | `GEK_REDTEAM_LEAK` — one leak fails the release |
-| byte-equivalence check | calibration builder + runtime builder | diff proof over the corpus × surfaces | 0 differing cards (a 1-byte perturbation must be detected — negative control) | `GEK_BUILDER_DRIFT` — thresholds invalid until fixed |
-| drift monitor (each check run) | GEK.lock vs disk | alarm rows | authority/oracle SHA equality; threshold derivation newer than authority change | `GEK_AUTHORITY_DRIFT` · `GEK_ORACLE_DRIFT` · `GEK_CALIBRATION_STALE` |
+| `gek calibrate` | labeled corpus + builder | thresholds + report | TRAIN zero false passes; HOLDOUT 0 false, ≥90% kept; separation control each run | `GEK_CALIBRATION_FAILED` (refuses to arm) |
+| red-team replay | archived failure commits | per-sha verdicts | every violation REJECTs with ≥1 anchor; every benign PASSes | `GEK_REDTEAM_LEAK` |
+| byte-equivalence | both builders | diff proof | 0 differing cards; 1-byte perturbation detected | `GEK_BUILDER_DRIFT` |
+| drift monitor | lock vs disk | alarm rows | shas equal; thresholds newer than authority | `GEK_AUTHORITY_DRIFT` / `GEK_ORACLE_DRIFT` / `GEK_CALIBRATION_STALE` |
 
-### Threshold derivation law (M6, mechanical)
+Threshold derivation law: every threshold is derived from the labeled sweep, never picked, never copied across projects. `t_act` = lowest grid value (0.20–0.90, step 0.05) with zero TRAIN false passes; `t_flag` = lowest with TRAIN false-pass rate <5%. Rows carry `corpus_sha`; a changed corpus invalidates by identity.
 
-Every number in `thresholds.json` is derived from the labeled sweep, never picked, never re-picked by hand, never copied from another project. `t_act` = the LOWEST grid value (sweep 0.20..0.90 step 0.05) at which TRAIN holds zero false passes; `t_flag` = the lowest grid value at which TRAIN false-pass rate < 5%. Both trace to a row of the derivation table below; the row carries the corpus sha so a changed corpus invalidates the row by identity.
-
-| Card | t_act | t_flag | Derivation | Held on holdout |
+| Card | t_act | t_flag | Derivation | Holdout |
 |---|---|---|---|---|
-| commit-substance-v1 | derived at calibrate | derived at calibrate | `<corpus-sha>` sweep row: zero TRAIN false passes; holdout 0 false / ≥90% kept — recorded from the run, never asserted | recorded per run |
-| (baseline: naive card, 2026-11-11 probe) | n/a | n/a | 5-row probe: max-positive 0.08 < min-negative 0.25; 1 miss (7d1e6a9 at 0.25) at any act threshold — the row the shaped card must beat | n/a |
+| commit-substance-v1 | calibrate output | calibrate output | `<corpus_sha>` sweep row | recorded per run |
+| naive baseline (2026-11-11) | n/a | n/a | violations .72/.68/.25 vs benign .08/.06 | the row to beat |
 
-### Calibration procedure (pseudocode, the harness runs verbatim)
+Procedure (harness runs verbatim):
 
 ```bash
-gold_label()            # N labellers × {sha → VIOLATION/NOT/UNSURE + reason}; completeness check exits ≠0 on gaps
-build_cards()           # ONE builder: corpus rows → Shape-S cards (byte-identical to runtime — proven by the equivalence probe)
-sweep()                 # for t in 0.20..0.90 step 0.05: TRAIN false-pass count at t; t_act = lowest zero-false t
-holdout()               # 0 false passes AND ≥90% violations kept, else GEK_CALIBRATION_FAILED (refuses to arm)
-separation_control()    # gold violation vs the same span quoted benignly — the gap must exceed 0.25, else FAILED
-byte_equivalence()      # calibration builder vs runtime builder over corpus × surfaces; 1-byte perturbation must be caught
+gold_label()          # labellers × {sha → VIOLATION/NOT/UNSURE+reason}; completeness ≠0 on gaps
+build_cards()         # ONE builder; byte-equal to runtime (equivalence probe)
+sweep()               # t grid over TRAIN; t_act = lowest zero-false
+holdout()             # 0 false AND ≥90% kept else GEK_CALIBRATION_FAILED
+separation_control()  # gold violation vs same span quoted benignly; gap > 0.25 required
+byte_equivalence()    # runtime vs calibration builders; 1-byte perturbation must fire
 ```
-### The seed corpus (PLUTUS_VISION, labeled 2026-11-11)
 
-| sha | Class | The violation, one line |
+---
+
+## §9 DELIVERY OPTIONS
+
+1. **CHOSEN — self-hosted runner + required checks.** Unbypassable; loopback to `:8090`; identical `gek check`. Cost: one supervised unit (`gek-runner.service`).
+2. GitHub-hosted runner + authenticated tunnel to the judge. Works; publishes a model endpoint. Rejected v1.
+3. Merge-queue status daemon. Equivalent enforcement; another always-on process. Fallback.
+4. **IMPOSSIBLE — local hooks as sole enforcement.** Hooks run with committer permissions (§0); disqualified.
+
+---
+
+## §10 LEARN LOOP
+
+Every verdict appends to `runtime/gek/verdicts.jsonl` {sha, surface, tier, card_sha, composite, bullets, decision, latency}. Recalibration on cadence and on every red-team leak ingests the ledger as new gold labels. Corpus is append-only.
+
+---
+
+## §11 ANTI-PATTERNS — WIRED DETECTORS
+
+| Defect class | Detector |
+|---|---|
+| Circular evidence | Q1 + evidence-path authorship ⇒ `GEK_ORACLE_SELF_AUTHORED` |
+| Invented constant | Q2 + `constant_traced` ⇒ `GEK_CONSTANT_UNTRACED` |
+| Wrong workspace | `root_identity` ⇒ `GEK_WORKSPACE_FOREIGN` |
+| Form-gaming (renames, message edits) | judge scores the card, not the message; server re-derives |
+| Completion claim without oracle | `evidence_class` ⇒ `GEK_CLAIM_WITHOUT_ORACLE` |
+| Uncalibrated gate passing | `armed` ⇒ `GEK_NOT_ARMED`; `GEK_CALIBRATION_STALE` |
+| Client-side bypass | server required checks; reference-transaction local; shells logicless |
+| Stale authority (version skew) | `authority_pin` ⇒ `GEK_AUTHORITY_DRIFT`; Q6 |
+| Judge-down silent pass | `GEK_JUDGE_DOWN` fail-closed, ledgered |
+| Vacuous REJECT | calibration asserts ≥1 anchor per red-team REJECT ⇒ `GEK_FEEDBACK_VACUOUS` |
+| Theatrical test prose | Q4/Q5 + `jm st-detect` optional validator |
+
+Failure-token surface (exit 2, remedy text): `GEK_SPEC_MISSING` `GEK_AUTHORITY_MISSING` `GEK_AUTHORITY_DRIFT` `GEK_ORACLE_MISSING` `GEK_ORACLE_DRIFT` `GEK_ORACLE_SELF_AUTHORED` `GEK_CONSTANT_UNTRACED` `GEK_WORKSPACE_FOREIGN` `GEK_JUDGE_DOWN` `GEK_JUDGE_UNPARSEABLE` `GEK_CARD_OVERSIZE` `GEK_INDEX_READ_FAIL` `GEK_PREDICATE_UNEVALUABLE` `GEK_CLAIM_WITHOUT_ORACLE` `GEK_PHASE_TOKEN_MISSING` `GEK_SCOPE_VIOLATION` `GEK_CALIBRATION_FAILED` `GEK_CALIBRATION_STALE` `GEK_CORPUS_THIN` `GEK_NOT_ARMED` `GEK_NOT_INSTALLED` `GEK_REDTEAM_LEAK` `GEK_BUILDER_DRIFT` `GEK_FEEDBACK_VACUOUS` `GEK_SERVER_TIER_DOWN` `GEK_COMPILE_ANCHORLESS` `GEK_INTERNAL`.
+
+---
+
+## §12 BUILD SEQUENCE (exits can fail)
+
+| Phase | Exit criterion |
+|---|---|
+| P1 scaffold + CLI | `gek --help` exit 0; tokens registered; repo clean |
+| P2 spec compiler | PLUTUS v5.2 pair → gate-spec with ≥10 anchored predicates + 6 cards; doctored authority flips `GEK_COMPILE_ANCHORLESS`; stale-pair skew test refuses |
+| P3 card + judge | probe corpus judged in 1 request; shaped-card separation passes (max benign composite < min violation composite); equivalence negative control fires |
+| P4 mech + hooks | red-team replay: 7f88717, 7d1e6a9, 2f81ff44 REJECT (≥1 anchor each); benign PASS; `--no-verify` still blocked by reference-transaction; worktree-split fixture proves index-only reads |
+| P5 calibration | TRAIN zero false passes; HOLDOUT ≥90% kept, 0 false; ARMED=true only here |
+| P6 runner + required checks | locally-failing push rejected server-side; green path merges; runner supervised |
+| P7 PLUTUS production attach | public repo; attach+install+calibrate; failure commits replayed as pushes and physically rejected; operator sign-off |
+| P8 skill + boilerplate | `project-gek` published; second project attached in ≤5 commands |
+
+---
+
+## §13 INHERITANCE (precise)
+
+| Donor | Taken | Not taken |
 |---|---|---|
-| 7f88717 | VIOLATION | m1-complete committed on circular evidence (chart judged against its own card) |
-| 7d1e6a9 | VIOLATION | "render proven" via harness choreography (pre-seeded store, virgin DB); render itself garbage |
-| 2f81ff44* | VIOLATION | invented `3 * 86400000` zone-end constant, no authority citation |
-| d83137c | VIOLATION | checkpoint-state ceremony commit; ledger reconciliation dressed as progress |
-| 7e99e73-equivalents | NOT | mechanical module adds per workflow turns (window.ts, p1.ts …) with named gate tokens |
-| a16b2ad | NOT | honest evidence pack: fresh captures, SHAs recorded, no acceptance claim |
-
-*the magic-constant commit is reconstructed as a fixture (the original was reverted in-session); class label carries the session transcript as its reason. Corpus floor: ≥20 negatives before arming (the PLUTUS run supplies 25 candidate rows; labellers label, the completeness gate refuses gaps).
+| JevManager | transport (canon detect, cap, limiter) — ported, origin comment | engine verbs, stores |
+| jarvis-upper | registry/check/ledger patterns | all code |
+| JGM | refuse contract, exit codes | all code |
+| PLUTUS commit_gate.py | negative requirements; raw-answer retention | grader, policy |
+| abide corpus 2026-10-31 | Shape-S card shape + AUC table | corpus data |
+| 2026-11-11 probe | naive separation row (calibration baseline) | — |
 
 ---
 
-## §9 THE DELIVERY (options, ranked; the impossible one named)
-
-1. **CHOSEN — self-hosted GitHub runner on this host + required checks.** Physically unbypassable (server-side), reaches :8090 over loopback, runs the identical `gek check`. Cost: one runner process to supervise (systemd unit `gek-runner.service`).
-2. GitHub-hosted runner + judge exposed through a loopback tunnel with auth. Works, but publishes a model endpoint and adds a hop — rejected for v1 (attack surface + latency).
-3. Merge-queue status service (always-on daemon posting statuses via API). Equivalent enforcement, one more daemon to keep alive — fallback if required-checks are unavailable on the account.
-4. **NAMED IMPOSSIBLE — local hooks as the sole enforcement.** Measured: `--no-verify`, hooksPath edits, and index/worktree splits all defeat client-side gates (PLUTUS 2026-11-11; jarvis-upper's own header admits it). Any design resting on local-only enforcement is disqualified on paper.
-
----
-
-## §10 THE LEARN LOOP
-
-Every verdict row lands in the project's ledger (`runtime/gek/verdicts.jsonl`: sha, surface, tier, card sha, composite, per-bullet, decision, latency). Weekly (and on every red-team leak): re-run `gek calibrate` with the accumulated ledger as additional gold labels — the gate sharpens on real attempts. Authority edits force recompile + recalibrate (lock law). The corpus never shrinks; a violation that once passed becomes a permanent negative.
-
----
-
-## §11 THE ANTI-PATTERNS — WIRED (each defect class + its MECHANICAL detector)
-
-| Defect class (measured instance) | Detector |
-|---|---|
-| Circular evidence (comparison authored by the generator) | Q1 bullet + mechanical: evidence-row path authorship — a path authored by the committer in the same commit cannot be its own oracle → `GEK_ORACLE_SELF_AUTHORED` |
-| Invented threshold (3-session constant) | Q2 bullet + mechanical: new `\d+ \* 86400000`-class constants in diff require a `source:` comment citing authority → `GEK_CONSTANT_UNTRACED` |
-| Wrong workspace (hidden .worktrees clone) | `GEK_WORKSPACE_FOREIGN`: registered-root equality check in `gek-mech`, both tiers |
-| Form-gaming the gates (rename M1-COMPLETE→DRAFT) | judge evaluates the card, never the message alone; server tier re-derives — renames cannot move a number |
-| Completion claims without oracle (m1-complete) | claim-class predicate: completion verbs ⇒ oracle-metric row in the same commit (Q5) |
-| Uncalibrated gate passing (flash-grader score≥7) | ARMED-0 = FAIL; `GEK_CALIBRATION_STALE` on authority drift; separation control mandatory |
-| Client-side bypass (`--no-verify`, hook edits) | server required checks; reference-transaction still fires locally; hook bundle is logicless (edits change nothing) |
-| Stale authority context (v5.0 grader grading a v5.2 build) | GEK.lock SHA pin; edit ⇒ recompile+recalibrate or `GEK_AUTHORITY_DRIFT` refusal (Q6) |
-| Swallowed judge failure (grader down ⇒ pass) | `GEK_JUDGE_DOWN` fail-closed, named, with resume condition; logged to ledger |
-| Vacuous feedback (REJECT with no remedy) | calibration asserts every red-team REJECT cites ≥1 authority anchor → `GEK_FEEDBACK_VACUOUS` |
-| Theatrical test/verification prose | Q4/Q5 bullets + st-detect integration option (`jm st-detect` pre-wired as an evidence validator) |
-
-Error-token surface (≥8, JGM contract, exit 2 with remedy text): `GEK_SPEC_MISSING` · `GEK_AUTHORITY_MISSING` · `GEK_AUTHORITY_DRIFT` · `GEK_ORACLE_MISSING` · `GEK_ORACLE_DRIFT` · `GEK_ORACLE_SELF_AUTHORED` · `GEK_CONSTANT_UNTRACED` · `GEK_WORKSPACE_FOREIGN` · `GEK_JUDGE_DOWN` · `GEK_JUDGE_UNPARSEABLE` · `GEK_CARD_OVERSIZE` · `GEK_INDEX_READ_FAIL` · `GEK_PREDICATE_UNEVALUABLE` · `GEK_CLAIM_WITHOUT_ORACLE` · `GEK_PHASE_TOKEN_MISSING` · `GEK_SCOPE_VIOLATION` · `GEK_CALIBRATION_FAILED` · `GEK_CALIBRATION_STALE` · `GEK_CORPUS_THIN` · `GEK_NOT_ARMED` · `GEK_NOT_INSTALLED` · `GEK_REDTEAM_LEAK` · `GEK_BUILDER_DRIFT` · `GEK_FEEDBACK_VACUOUS` · `GEK_SERVER_TIER_DOWN` · `GEK_COMPILE_ANCHORLESS`.
-
----
-
-## §12 THE BUILD SEQUENCE (phases with exits that can FAIL)
-
-| Phase | Exit criterion (all must hold; any fails the phase) |
-|---|---|
-| P1 scaffold + `gek` CLI skeleton | `gek --help` exit 0; refuse tokens registered; repo clean |
-| P2 spec compiler | compiles the PLUTUS v5.2 pair → gate-spec.json with ≥10 anchored predicates + the 6 cards; a doctored authority file flips `GEK_COMPILE_ANCHORLESS`; v5.0-vs-v5.2 skew test rejects the stale pair |
-| P3 card builder + judge client | the 2026-11-11 probe corpus (5 rows) judged in 1 request; separation control passes on the SHAPED card (max positive composite < min negative composite); builder byte-equivalence negative control fires |
-| P4 mechanical runtime + hooks | red-team replay: 7f88717, 7d1e6a9, 2f81ff44 REJECT (each ≥1 anchor); 2 known-good PASS; a forged `commit --no-verify` still blocked by reference-transaction; index/worktree split attempt → the worktree state is never read, proven by fixture |
-| P5 calibration on the full corpus | thresholds derived: TRAIN zero false passes; HOLDOUT ≥90% violations kept, 0 false passes; report written; ARMED flips true only here |
-| P6 self-hosted runner + required checks | a push with a locally-failing gate is rejected server-side; green path merges; runner unit supervised |
-| P7 PLUTUS_VISION production attach | public repo created; attach + install + calibrate; the three failure commits replayed as pushes and PHYSICALLY rejected; operator sign-off |
-| P8 skill + boilerplate extraction | `project-gek` skill published; a second project attached in ≤5 commands (dry-run sandbox) |
-
----
-
-## §13 WHAT IT INHERITS (precisely)
-
-From JevManager: `src/judge/transport.ts` canon auto-detect + outbound cap + limiter pattern (ported, origin comment retained; MIT, same author). From jarvis-upper: registry/required-check/fence-ledger PATTERNS (no code). From JGM: the refuse-token contract and exit codes (convention, no code). From PLUTUS_VISION's commit_gate.py: the negative requirements (§2 last row) and the raw-answer-keeping discipline on unparseable verdicts. From the abide calibration corpus (2026-10-31): the Shape-S card shape and its measured AUC table (0.890/0.801 vs 0.747 naive). From the 2026-11-11 GEK probe: the naive-card separation row (0.72/0.68/0.25 vs 0.08/0.06) — the calibration baseline to beat.
-
----
-
-## §14 THE FILE LAYOUT
+## §14 FILE LAYOUT
 
 ```
 GEK/
-  design/DESIGN_BLUEPRINT_GEK_V1.md          this document (validator-gated)
-  src/cli.ts                                 gek <compile|install|calibrate|check|explain|status>
-  src/spec-compile.ts                        authority → gate-spec.json
-  src/card.ts                                THE one Shape-S builder (runtime + calibration)
-  src/judge.ts                               :8090 client (canon-detect, cap, fail-closed)
-  src/mech.ts                                predicate runtime (index reads, oracle numerics)
-  src/hooks/{pre-commit,commit-msg,reference-transaction,pre-push}.tmpl   logicless shells
-  src/install.ts                             hook bundle + GEK.lock + runner workflow
-  src/calibrate.ts                           gold labels → thresholds (train/holdout/separation)
-  src/server/check.yml.tmpl                  the GitHub Actions required checks (self-hosted)
-  src/ledger.ts                              verdicts.jsonl writer/reader
-  corpus/                                    gold-label fixtures + the PLUTUS 2026-11-11 rows
-  runtime/<project>/                         ledgers + raw judge answers (gitignored)
-  GEK.md                                     THIS repo's own manifest (the kernel eats its own dog food)
-  tests/                                     unit + red-team replay suites
+  design/DESIGN_BLUEPRINT_GEK_V1.md
+  src/cli.ts                gek <compile|install|calibrate|check|explain|status>
+  src/spec-compile.ts       authority → gate-spec.json
+  src/card.ts               THE Shape-S builder (runtime + calibration)
+  src/judge.ts              :8090 client (canon detect, cap, fail-closed)
+  src/mech.ts               predicate runtime (index reads, oracle numerics)
+  src/hooks/*.tmpl          logicless shells (pre-commit, commit-msg, reference-transaction, pre-push)
+  src/install.ts            hook bundle + GEK.lock + runner workflow
+  src/calibrate.ts          labels → thresholds (train/holdout/separation)
+  src/server/check.yml.tmpl GitHub required checks (self-hosted runner)
+  src/ledger.ts             verdicts.jsonl
+  corpus/                   fixtures + PLUTUS 2026-11-11 rows
+  runtime/<project>/        ledgers + raw answers (gitignored)
+  GEK.md                    this repo's own manifest
+  tests/                    unit + red-team suites
 ```
 
 ---
 
-## §15 THE RISK REGISTER (ranked)
+## §15 RISK REGISTER (ranked)
 
 | # | Risk | Sev | Mitigation |
 |---|---|---|---|
-| 1 | Judge false-negative on a novel derailment style lets garbage land | H | the learn loop + red-team expansion; thresholds tuned for zero false passes; every verdict ledgered for later labeling |
-| 2 | Self-hosted runner down ⇒ server tier dark | H | systemd supervision + `GEK_SERVER_TIER_DOWN` blocks evidence-class commits locally while dark (fail-closed both tiers); alert on 2 missed polls |
-| 3 | Spec compiler emits anchorless rules on unfamiliar doc styles | M | `GEK_COMPILE_ANCHORLESS` drops and REPORTS; manual rule file allowed in `GEK.md` with mandatory anchors |
-| 4 | Calibration corpus overfits (threshold tuned to 25 commits) | M | holdout split + separation control + learn-loop refresh on ledger accumulation |
-| 5 | Latency: judge cold start (~54 s measured) stalls commits | M | pre-warm probe (bounded) as jm does; advisory tier timeout 10 s → BLOCKED-with-resume, not a hang |
-| 6 | Oracle files stale (operator truth ages) | M | `GEK_ORACLE_DRIFT` pin + explicit operator re-pin ritual; never silently reused |
-| 7 | Agent edits GEK.md/oracles to weaken gates | H | committer-readonly law; same-commit modification ⇒ `GEK_ORACLE_SELF_AUTHORED`; server tier verifies lock from its own checkout |
-| 8 | Multi-project host contention on :8090 | L | judge limiter + batch=32 (measured headroom); per-project ledgers |
+| 1 | Novel violation style passes the judge | H | learn loop + red-team expansion; thresholds tuned for zero false passes; all verdicts ledgered for labeling |
+| 2 | Runner down ⇒ server tier dark | H | systemd supervision; `GEK_SERVER_TIER_DOWN` fail-closed locally; alert on 2 missed polls |
+| 3 | Compiler anchorless on unfamiliar doc styles | M | `GEK_COMPILE_ANCHORLESS` drops+reports; manual rules in `GEK.md` with mandatory anchors |
+| 4 | Corpus overfit | M | holdout + separation control + ledger refresh |
+| 5 | Judge cold start stalls commits | M | install-time pre-warm; 10 s advisory ceiling → blocked-with-resume |
+| 6 | Oracle staleness | M | `GEK_ORACLE_DRIFT` re-pin ritual |
+| 7 | Committer weakens GEK.md/oracles | H | committer-readonly; same-commit edit ⇒ `GEK_ORACLE_SELF_AUTHORED`; server verifies lock from its checkout |
+| 8 | `:8090` contention across projects | L | limiter + batch 32; per-project ledgers |
 
 ---
 
 # SUMMARY
 
-GEK is a host-side, project-agnostic git enforcement kernel that turns any project's design blueprint and execution workflow into the project's commit gates: a compiler derives mechanical predicates and six verbatim judge questions from those two documents (SHA-pinned, so the law can never go stale), a single shared builder wraps each commit into a Shape-S evidence card, the local System One judge scores it for free in one batched request, and the verdict is enforced twice — locally as instant feedback naming the exact authority line the commit violated, and server-side through GitHub required checks on a self-hosted runner that is the only unbypassable surface and the only route to the judge — with oracle files owned by the operator so circular evidence cannot exist, thresholds that refuse to exist until calibrated on the project's own labeled failure corpus (armed-zero is fail), and a learn loop that sharpens the gates on every recorded verdict; the exact derailments of 2026-11-11 — circular proof, invented constants, wrong workspace, form-gaming, stale authority, unverified completion claims — each carry a named token and a mechanical detector, and the whole thing installs on a new project in five commands.
+GEK compiles a project's authority documents into that project's commit gates: mechanical predicates and six batched judge questions derived from the SHA-pinned blueprint and workflow, one shared card builder wrapping each commit (law extract + marked diff + evidence rows), scored by the local System One judge and enforced twice — locally as instant remediation feedback, and server-side as GitHub required checks on a self-hosted runner that is the only unbypassable surface and the only route to the judge — with operator-owned oracle files making circular evidence structurally unexpressable, thresholds that exist only as calibration outputs (armed-zero fails), and every 2026-11-11 derailment class carrying a named token and a mechanical detector; installation on any project is five commands with no project-specific code.
