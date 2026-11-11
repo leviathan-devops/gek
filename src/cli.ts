@@ -1,0 +1,56 @@
+#!/usr/bin/env bun
+// src/cli.ts — gek <compile|install|calibrate|check|explain|status> (blueprint §14).
+import { compile } from "./spec-compile.ts";
+import { loadManifest, loadLock, writeLock, sha256 } from "./config.ts";
+import { runCheck } from "./check.ts";
+
+const [verb, ...rest] = Bun.argv.slice(2);
+const dir = rest.find((a) => !a.startsWith("--")) ?? process.cwd();
+const USAGE = `gek — the git enforcement kernel
+  gek compile <dir>          authority docs → gate-spec.json + GEK.lock
+  gek install <dir>          branch protection + required checks + runner registration
+  gek calibrate <dir>        labeled corpus → thresholds.json (ARMED)
+  gek check <dir> [--server|--explain] [--check mechanical|judge|identity]
+  gek explain <TOKEN>        the remedy text for a refusal token
+  gek status <dir>           lock, pins, armed state`;
+
+switch (verb) {
+  case undefined: case "--help": case "help": console.log(USAGE); process.exit(0);
+  case "compile": {
+    const m = loadManifest(dir);
+    const r = compile(dir);
+    const authority: Record<string, string> = {}; for (const rel of m.authority) authority[rel] = sha256(`${dir}/${rel}`);
+    const oracles: Record<string, string> = {}; for (const o of m.oracles) oracles[o.path] = sha256(`${dir}/${o.path}`);
+    writeLock(dir, { schema: 1, project: m.project, root: m.root, authority, oracles, gate_spec: sha256(`${dir}/gate-spec.json`), armed: false, server_checks: ["gek-mechanical", "gek-judge", "gek-identity"] });
+    console.log(JSON.stringify({ ok: true, predicates: r.predicates, dropped: r.dropped, gate_spec: `${dir}/gate-spec.json` }));
+    process.exit(r.dropped.length ? 0 : 0);
+  }
+  case "status": {
+    const lock = loadLock(dir);
+    console.log(JSON.stringify(lock ?? { ok: false, reason: "GEK_NOT_INSTALLED" }, null, 1)); process.exit(0);
+  }
+  case "check": {
+    const surface = rest.includes("--explain") ? "explain" : "server";
+    const checkKind = (rest.find((a) => a.startsWith("--check")) ?? "--check=full").split("=")[1] as never;
+    // minimal commit capture for the server context: HEAD diff vs parent, message, evidence row if staged
+    const proc = Bun.spawnSync(["sh", "-c", `cd ${dir} && git log -1 --format=%B && echo --- && git diff HEAD~1 HEAD --stat && echo --- && git diff HEAD~1 HEAD | head -400`], { stdout: "pipe" });
+    const out = proc.stdout.toString();
+    const [message, stat, diff] = out.split("\n---\n");
+    const paths = (stat ?? "").split("\n").map((l) => l.split("|")[0].trim()).filter(Boolean);
+    process.exit(await runCheck({ surface, check: checkKind, dir }, { paths, message: message ?? "", evidence: null, diffText: diff ?? "", committer: "" }));
+  }
+  case "explain": {
+    const t = rest[0] ?? "";
+    const map: Record<string, string> = {
+      GEK_JUDGE_REJECT: "The card scored ≥ t_act on a substance question. Fix what the bullet names: cite the authority line, carry an oracle-metric evidence row, or land in the registered root — then re-run gek check --explain.",
+      GEK_CLAIM_WITHOUT_ORACLE: "The message claims completion but no oracle_metric observable is carried. Add an evidence row citing an operator-owned oracle file with the measured value.",
+      GEK_CONSTANT_UNTRACED: "A new numeric constant has no source. Add a `source: <authority>:<line>` comment or a derivation in the evidence rows.",
+      GEK_AUTHORITY_DRIFT: "An authority document changed past its pin. Run gek compile && gek calibrate in the SAME commit as the doc change.",
+      GEK_WORKSPACE_FOREIGN: "The commit is outside the registered root. Move the work into the root named in GEK.lock.",
+      GEK_NOT_ARMED: "thresholds.json is absent or stale. Run gek calibrate (needs ≥20 labeled negatives).",
+    };
+    console.log(map[t] ?? `No remedy text for ${t} — see design/DESIGN_BLUEPRINT_GEK_V1.md §11.`); process.exit(0);
+  }
+  case "install": case "calibrate": console.error(`${verb.toUpperCase()}_PENDING: ${verb} lands in P5/P6 per the build sequence`); process.exit(2);
+  default: console.error(`unknown verb ${verb}`); console.log(USAGE); process.exit(2);
+}
