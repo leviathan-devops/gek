@@ -1,10 +1,20 @@
 {
   "schema": 1,
-  "corpus": "probe-5",
-  "provisional": true,
+  "mode": "advisory-judge + mechanical-gate",
+  "corpus": "labels.json@40rows",
   "commit-substance-v1": {
-    "t_act": 0.55,
-    "t_flag": 0.5,
-    "derived_at": "2026-11-11T18:10:58.213Z"
+    "verdict": "any-bullet-blocking-at-0.85 + advisory-band",
+    "bullets": {
+      "Q1": 0.75,
+      "Q2": 0.65,
+      "Q3": 0.6,
+      "Q4": 0.8,
+      "Q5": 0.6,
+      "Q6": 0.75
+    },
+    "t_act": 0.8,
+    "blocking_floor": 0.85,
+    "derived_at": "2026-11-11T19:34:24.529Z",
+    "holdout_recall_judge_layer": "3/8 (measured; ceremony class carried mechanically by GEK_CEREMONY)"
   }
 }
