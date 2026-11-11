@@ -52,10 +52,13 @@ switch (verb) {
       console.error(`GEK_RANGE_BASE_UNAVAILABLE: ${baseRef} does not resolve - the server check judges the PR RANGE and requires the base tracking-ref (actions/checkout fetch-depth: 0 fetches it). A narrowed range would silently hide commits. Remedy: pass the fetched tracking-ref form (origin/<branch>); never fall back.`);
       process.exit(2);
     }
-    const proc = Bun.spawnSync(["sh", "-c", `cd ${dir} && git log --format=%B ${baseRef}..HEAD | head -80 && echo --- && git diff --name-only ${baseRef}..HEAD && echo --- && git diff ${baseRef}..HEAD | head -400`], { stdout: "pipe" });
-    const out = proc.stdout.toString();
-    const [message, names, diff] = out.split("\n---\n");
-    const paths = (names ?? "").split("\n").map((l) => l.trim()).filter(Boolean);
+    // THREE separate captures, NO delimiter: a `---` markdown divider inside a commit body fed the
+    // separator into the path list (live: '--- matches no allow pattern' on v5).
+    const cap = (cmd: string): string => Bun.spawnSync(["sh", "-c", `cd ${dir} && ${cmd}`], { stdout: "pipe" }).stdout.toString();
+    const message = cap(`git log --format=%B ${baseRef}..HEAD | head -80`);
+    const names = cap(`git diff --name-only ${baseRef}..HEAD`);
+    const diff = cap(`git diff ${baseRef}..HEAD | head -400`);
+    const paths = names.split("\n").map((l: string) => l.trim()).filter(Boolean);
     // Evidence rows: the commit message may cite artifacts with 'Evidence: <path>' lines; they are
     // loaded into the card's evidence slot (the judge sees the measured numbers, not just a citation).
     const evidencePaths = [...(message ?? "").matchAll(/^Evidence:\s*(\S+)$/gm)].map((m) => m[1]);
