@@ -9,14 +9,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - run: cd "$GITHUB_WORKSPACE" && GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK bun "$GEK_HOME/src/cli.ts" check . --check=mechanical
+      - run: cd "$GITHUB_WORKSPACE" && export GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK && /home/leviathan/.bun/bin/bun "$GEK_HOME/src/cli.ts" check . --base="origin/${GITHUB_BASE_REF:?no_base_branch_in_event}" --check=mechanical
   gek-identity:
     needs: [gek-mechanical]
     runs-on: [self-hosted, gek-host]
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - run: cd "$GITHUB_WORKSPACE" && GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK bun "$GEK_HOME/src/cli.ts" check . --check=identity
+      - run: cd "$GITHUB_WORKSPACE" && export GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK && /home/leviathan/.bun/bin/bun "$GEK_HOME/src/cli.ts" check . --base="origin/${GITHUB_BASE_REF:?no_base_branch_in_event}" --check=identity
   gek-judge:
     needs: [gek-identity]
     runs-on: [self-hosted, gek-host]
@@ -26,6 +26,6 @@ jobs:
       - run: |
           cd "$GITHUB_WORKSPACE"
           export GEK_HOME=/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK
-          { echo "HOME=$HOME TEMP=$RUNNER_TEMP"; pwd; ls -la; bun "$GEK_HOME/src/cli.ts" check . --check=judge; echo "GEK_JUDGE_STEP_EXIT=$?"; } > "$HOME/gek-debug-judge.txt" 2>&1
+          { echo "HOME=$HOME TEMP=$RUNNER_TEMP"; pwd; ls -la; bun "$GEK_HOME/src/cli.ts" check . --base="origin/${GITHUB_BASE_REF:?no_base_branch_in_event}" --check=judge; echo "GEK_JUDGE_STEP_EXIT=$?"; } > "$HOME/gek-debug-judge.txt" 2>&1
           cat "$HOME/gek-debug-judge.txt"
           grep -q "GEK_JUDGE_STEP_EXIT=0" "$HOME/gek-debug-judge.txt"
