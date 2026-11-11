@@ -10,13 +10,19 @@ import { askJudge } from "./judge.ts";
 export interface CheckOpts { surface: "server" | "explain"; check?: "mechanical" | "judge" | "identity"; dir: string }
 
 function lawExtract(dir: string, anchors: string[], cap = 4000): string {
+  // SCHEME-ROUTED resolution (not a ladder): gek:// anchors are the kernel's own authority and
+  // resolve against GEK_HOME; bare paths are the project's and resolve against the checkout.
+  const GEK = process.env.GEK_HOME ?? "/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK";
   const byFile = new Map<string, number[]>();
   for (const a of anchors) { const f = a.split(":")[0]; const l = Number(a.split(":")[1]); if (f && l) { if (!byFile.has(f)) byFile.set(f, []); byFile.get(f)!.push(l); } }
   const parts: string[] = [];
   for (const [f, lines] of byFile) {
+    const isKernel = f.startsWith("gek://");
+    const base = isKernel ? GEK : dir;
+    const path = isKernel ? `${base}/${f.slice(6)}` : `${base}/${f}`;
     let txt: string[];
-    try { txt = readFileSync(`${dir}/${f}`, "utf8").split("\n"); }
-    catch { console.error(`GEK_AUTHORITY_MISSING: anchor file ${f} named by the gate-spec is unreadable - the law extract is never silently shortened. Remedy: restore the pinned authority file or recompile the gate-spec.`); process.exit(2); }
+    try { txt = readFileSync(path, "utf8").split("\n"); }
+    catch { console.error(`GEK_AUTHORITY_MISSING: anchor file ${f} named by the gate-spec is unreadable at ${path} - the law extract is never silently shortened. Remedy: restore the pinned authority file or recompile the gate-spec.`); process.exit(2); }
     for (const l of lines) parts.push(`${f}:${l}: ${txt[l - 1]?.slice(0, 200) ?? ""}`);
   }
   return parts.join("\n").slice(0, cap);

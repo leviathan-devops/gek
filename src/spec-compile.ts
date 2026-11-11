@@ -16,12 +16,12 @@ export const CARDS: Card[] = [{
     // POLARITY LAW: every question reads HIGH = VIOLATION PRESENT, with the jm-measured answer-key
     // phrasing ("Answer 1.0 if yes, 0.0 if no" — src/judge pattern, JevManager push-gate). Q3
     // (workspace) is NOT asked: it is the mechanical root_identity predicate, never a judge matter.
-    { q: "Does the completion or verification claim in this commit rest on evidence produced by the same artifact it judges rather than an independent oracle? Answer 1.0 if yes, 0.0 if no.", anchor: `${BP}:262` },
-    { q: "Does this diff introduce a numeric constant that is NOT traced to a cited authority line or a measured derivation in the evidence rows? Answer 1.0 if yes, 0.0 if no.", anchor: `${BP}:263` },
-    { q: "Does the evidence for each touched subsystem fail to name an observable that exists outside the committer's own session (a harness choreography, a self-authored comparison, or a session-local artifact standing in as proof)? Answer 1.0 if yes, 0.0 if no.", anchor: `${BP}:265` },
-    { q: "Does the commit message claim a phase or turn is complete while the turn's named gate token is absent from any tool-result artifact in this commit? Answer 1.0 if yes, 0.0 if no.", anchor: `${BP}:266` },
-    { q: "Are enforcement, gate, or authority files changed in this commit WITHOUT a recompile and recalibration record carried in the same commit? Answer 1.0 if yes, 0.0 if no.", anchor: `${BP}:267` },
-    { q: "Is this commit documentation, ledger bookkeeping, checkpoint bookkeeping, or state ceremony presented as substantive progress — an advancement or status claim whose diff changes no verified behavior, no gate outcome, and no measured evidence? Answer 1.0 if yes, 0.0 if no.", anchor: `${BP}:246` },
+    { q: "Does the completion or verification claim in this commit rest on evidence produced by the same artifact it judges rather than an independent oracle? Answer 1.0 if yes, 0.0 if no.", anchor: `gek://${BP}:262` },
+    { q: "Does this diff introduce a numeric constant that is NOT traced to a cited authority line or a measured derivation in the evidence rows? Answer 1.0 if yes, 0.0 if no.", anchor: `gek://${BP}:263` },
+    { q: "Does the evidence for each touched subsystem fail to name an observable that exists outside the committer's own session (a harness choreography, a self-authored comparison, or a session-local artifact standing in as proof)? Answer 1.0 if yes, 0.0 if no.", anchor: `gek://${BP}:265` },
+    { q: "Does the commit message claim a phase or turn is complete while the turn's named gate token is absent from any tool-result artifact in this commit? Answer 1.0 if yes, 0.0 if no.", anchor: `gek://${BP}:266` },
+    { q: "Are enforcement, gate, or authority files changed in this commit WITHOUT a recompile and recalibration record carried in the same commit? Answer 1.0 if yes, 0.0 if no.", anchor: `gek://${BP}:267` },
+    { q: "Is this commit documentation, ledger bookkeeping, checkpoint bookkeeping, or state ceremony presented as substantive progress — an advancement or status claim whose diff changes no verified behavior, no gate outcome, and no measured evidence? Answer 1.0 if yes, 0.0 if no.", anchor: `gek://${BP}:246` },
   ],
   composite: "(own*act + v + max(bullet))/3",
   thresholds_ref: "thresholds.json#commit-substance-v1",
@@ -49,9 +49,9 @@ export function compile(dir: string): { gate_spec: string; predicates: number; d
   push({ kind: "root_identity", anchor: lineOf("root:") });
   for (const rel of m.authority) push({ kind: "authority_pin", anchor: `${rel}:1` });
   for (const o of m.oracles) push({ kind: "oracle_pin", anchor: lineOf(o.path) });
-  push({ kind: "armed", anchor: `${BP}:246` });
-  push({ kind: "constant_traced", anchor: `${BP}:239` });
-  push({ kind: "ceremony", anchor: `${BP}:239` });
+  push({ kind: "armed", anchor: `gek://${BP}:246` });
+  push({ kind: "constant_traced", anchor: `gek://${BP}:239` });
+  push({ kind: "ceremony", anchor: `gek://${BP}:239` });
   if (m.evidence.claims.length)
     push({ kind: "evidence_class", claims: m.evidence.claims, requires_oracle_metric: m.evidence.requires_oracle_metric, anchor: lineOf("claims:") });
 
