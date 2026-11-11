@@ -34,7 +34,16 @@ switch (verb) {
     const surface = rest.includes("--explain") ? "explain" : "server";
     const checkKind = (rest.find((a) => a.startsWith("--check")) ?? "--check=full").split("=")[1] as never;
     // minimal commit capture for the server context: HEAD diff vs parent, message, evidence row if staged
-    const proc = Bun.spawnSync(["sh", "-c", `cd ${dir} && git log -1 --format=%B && echo --- && git diff --name-only HEAD~1 HEAD && echo --- && git diff HEAD~1 HEAD | head -400`], { stdout: "pipe" });
+    // THE PR RANGE with NO FALLBACK BASE: a single-commit capture launders violating subjects
+    // out of the judged message (measured live: the decoy PR passed on its merge-commit message),
+    // and a `|| HEAD~1` fallback would silently narrow the range when the base ref is missing.
+    // A missing base refuses by name (fallback-slop law).
+    const baseOk = Bun.spawnSync(["sh", "-c", `cd ${dir} && git rev-parse --verify origin/main`], { stdout: "pipe" });
+    if (baseOk.exitCode !== 0) {
+      console.error("GEK_RANGE_BASE_UNAVAILABLE: origin/main is absent - the server check judges the PR RANGE and requires the base ref (actions/checkout fetch-depth: 0). A narrowed range would silently hide commits. Remedy: fix the checkout; never fall back.");
+      process.exit(2);
+    }
+    const proc = Bun.spawnSync(["sh", "-c", `cd ${dir} && git log --format=%B origin/main..HEAD | head -80 && echo --- && git diff --name-only origin/main..HEAD && echo --- && git diff origin/main..HEAD | head -400`], { stdout: "pipe" });
     const out = proc.stdout.toString();
     const [message, names, diff] = out.split("\n---\n");
     const paths = (names ?? "").split("\n").map((l) => l.trim()).filter(Boolean);
