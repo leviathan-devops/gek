@@ -6,3 +6,5 @@
 - gates: main b3173a5 (PR8 runtime + PR10 ceremony/spec); every merge passed its own three checks.
 - visual/runtime-state.png: the live check output + runner/PR state rendered (no GUI runtime; the check IS the runtime).
 - HONEST GAPS: judge advisory by measurement (mechanical carries the gate); PR7 branch superseded; PLUTUS E1 engine frozen per operator ruling.
+
+- SEAL CORRECTION (2026-11-12): chattr +i is NOT PERMITTED on this filesystem ("Operation not permitted", verified) — the earlier "SEALED" lines were silent failures. This checkpoint is MODE B (documented mutable): the manifest attests the state at write time; tamper-evidence comes from the git history (the checkpoint is committed) + the kernel-side anchors, not from filesystem immutability.

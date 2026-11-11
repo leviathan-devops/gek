@@ -8,3 +8,5 @@
 - visual/runtime-state.png: sha16 recorded in VISUAL_CHECKPOINTS_LOG.md.
 - HONEST GAPS: PR3 merge + v5 tamper + pr-only workflow + PR7 close (the reset suite — /tmp/gek-reset-suite.log); judge advisory by measurement; GEK's self-anchor; alert row never outage-fired; T7 dry-run only.
 - Mode A seal (full tree, chattr +i) — the fourth sealed checkpoint.
+
+- SEAL CORRECTION (2026-11-12): chattr +i is NOT PERMITTED on this filesystem ("Operation not permitted", verified) — the earlier "SEALED" lines were silent failures. This checkpoint is MODE B (documented mutable): the manifest attests the state at write time; tamper-evidence comes from the git history (the checkpoint is committed) + the kernel-side anchors, not from filesystem immutability.
