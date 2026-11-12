@@ -1,0 +1,14 @@
+{
+  "name": "gek",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "gek": "./src/cli.ts"
+  },
+  "scripts": {
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "bun-types": "^1.4.4"
+  }
+}

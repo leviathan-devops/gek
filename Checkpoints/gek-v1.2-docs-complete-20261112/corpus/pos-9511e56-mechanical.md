@@ -1,0 +1,2 @@
+COMMIT "build(m1): add window.ts - deterministic run window from week monday"
+Facts: adds one new module implementing the week window exactly as workflow P2.TURN-01 specifies: Sunday 22:00 open, Monday 09:00 London cutoff with the fixed UK daylight-saving table, Friday 21:00 close. Unit check test_workflow_preflight asserts WINDOW_MONDAY_OK and WINDOW_NON_MONDAY_REJECTED. No claims beyond the module; no completion language; diff touches only the named files.

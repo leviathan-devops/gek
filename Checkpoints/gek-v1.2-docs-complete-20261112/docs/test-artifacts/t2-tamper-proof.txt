@@ -1,0 +1,2 @@
+T2 tamper-proof: branch tamper/remove-gate (PR6) deletes GEK.md, GEK.lock, gate-spec.json, thresholds.json, the workflow, and the labels.
+GitHub branch protection: mergeable=MERGEABLE state=BLOCKED (2026-11-11T19:56:40Z) — the required checks (gek-mechanical/identity/judge) can never report without the workflow; the merge is physically blocked.

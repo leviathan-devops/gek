@@ -1,0 +1,150 @@
+{
+ "schema": 1,
+ "asset": "EURUSD",
+ "week": "2026-07-06",
+ "source": "MASTER_CONTEXT/NON-NEGOTIABLE-RELOAD/Golden_Operator_Trade_Feedback_EU_GU.md (operator-authored, 84 lines, sha 81d6dd0f1287922c)",
+ "note": "operator: \"The zones that I have charted are only supply-demand liquidity. There are no institutional pressure zones on these image references\" \u2014 E1 IP zones must OVERLAP these; price must respect them like a brick wall",
+ "fib": {
+  "0.618": 1.14166,
+  "0.786": 1.14231,
+  "1.382": null,
+  "1.618": 1.14555
+ },
+ "zones": [
+  {
+   "id": "OZ-01",
+   "day": "Mon",
+   "kind": "1H supply",
+   "lo": 1.1446,
+   "hi": 1.1453,
+   "role": "SL anchor",
+   "doc": "Golden_Operator_Trade_Feedback_EU_GU.md trade 1"
+  },
+  {
+   "id": "OZ-02",
+   "day": "Mon",
+   "kind": "LQZ",
+   "lo": 1.14395,
+   "hi": 1.1444,
+   "role": "entry anchor",
+   "doc": "trade 1"
+  },
+  {
+   "id": "OZ-03",
+   "day": "Mon",
+   "kind": "1H MoM demand",
+   "lo": 1.14,
+   "hi": 1.14149,
+   "role": "TP target",
+   "doc": "trade 1"
+  },
+  {
+   "id": "OZ-04",
+   "day": "Mon",
+   "kind": "nested LQZ",
+   "lo": 1.1402,
+   "hi": 1.1411,
+   "role": "TP edge",
+   "doc": "trade 1"
+  },
+  {
+   "id": "OZ-05",
+   "day": "Mon",
+   "kind": "1H refined 4H supply (Jun 22 OB)",
+   "lo": 1.14475,
+   "hi": 1.14625,
+   "role": "macro supply",
+   "doc": "trade 1 narrative"
+  },
+  {
+   "id": "OZ-06",
+   "day": "Mon",
+   "kind": "LQZ (Jun 18-22)",
+   "lo": 1.1462,
+   "hi": 1.1466,
+   "role": "deep SL anchor",
+   "doc": "trade 1 narrative"
+  },
+  {
+   "id": "OZ-07",
+   "day": "Mon",
+   "kind": "1H unmitigated MoM demand (Thu BS origin)",
+   "lo": 1.14,
+   "hi": 1.14145,
+   "role": "long entry",
+   "doc": "trade 2"
+  },
+  {
+   "id": "OZ-08",
+   "day": "Wed",
+   "kind": "1H MoM supply (formed during BS)",
+   "lo": 1.1422,
+   "hi": 1.14295,
+   "role": "reaction point",
+   "doc": "trade 4"
+  },
+  {
+   "id": "OZ-09",
+   "day": "Wed",
+   "kind": "LQZ (Jun 29-30)",
+   "lo": 1.13875,
+   "hi": 1.13935,
+   "role": "deep liquidity / entry",
+   "doc": "trade 6"
+  },
+  {
+   "id": "OZ-10",
+   "day": "Wed",
+   "kind": "BoM demand = 4H bullish OB refined 1H",
+   "lo": 1.13815,
+   "hi": 1.13885,
+   "role": "extreme bullish pressure",
+   "doc": "trade 6"
+  },
+  {
+   "id": "OZ-11",
+   "day": "Wed",
+   "kind": "30m LQZ (fib 0.618 inside)",
+   "lo": 1.1415,
+   "hi": 1.1417,
+   "role": "reinforcement entry",
+   "doc": "trade 6 FLR"
+  },
+  {
+   "id": "OZ-12",
+   "day": "Wed",
+   "kind": "LQZ (fib 0.786 support)",
+   "lo": 1.14195,
+   "hi": 1.14225,
+   "role": "reinforcement",
+   "doc": "trade 6 FLR"
+  },
+  {
+   "id": "OZ-13",
+   "day": "Wed",
+   "kind": "LQZ under Fib 1",
+   "lo": 1.14265,
+   "hi": 1.143,
+   "role": "stop-limit trigger",
+   "doc": "trade 6 FLR"
+  },
+  {
+   "id": "OZ-14",
+   "day": "Fri",
+   "kind": "LQZ (Jun 18-22) / fib 1.786",
+   "lo": 1.1462,
+   "hi": 1.1466,
+   "role": "SL anchor",
+   "doc": "trade 8"
+  },
+  {
+   "id": "OZ-15",
+   "day": "Thu/Fri",
+   "kind": "BoM supply (1.618 target zone)",
+   "lo": 1.14555,
+   "hi": 1.14625,
+   "role": "TP / reaction",
+   "doc": "trade 7/8"
+  }
+ ]
+}

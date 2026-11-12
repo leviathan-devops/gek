@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "corpus": "probe-5",
+  "provisional": true,
+  "commit-substance-v1": {
+    "t_act": 0.55,
+    "t_flag": 0.5,
+    "derived_at": "2026-11-11T18:10:58.213Z"
+  }
+}

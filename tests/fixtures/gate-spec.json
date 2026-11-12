@@ -1,0 +1,264 @@
+{
+  "schema": 1,
+  "project": "PLUTUS_VISION",
+  "authority_sha": {
+    "design/DESIGN_BLUEPRINT_v5.2_COMPILER_GRADE.md": "d1776a680bb86a8e30be81d097751ebf6ef576f1751cd091117752cfe60f0dcf",
+    "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md": "1d510185f46320ffe9d83231bb8367a0efe31326efa1266b4cfcdc73c835766f"
+  },
+  "predicates": [
+    {
+      "kind": "root_identity",
+      "anchor": "GEK.md:3"
+    },
+    {
+      "kind": "authority_pin",
+      "anchor": "design/DESIGN_BLUEPRINT_v5.2_COMPILER_GRADE.md:1"
+    },
+    {
+      "kind": "authority_pin",
+      "anchor": "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1"
+    },
+    {
+      "kind": "oracle_pin",
+      "anchor": "GEK.md:9"
+    },
+    {
+      "kind": "oracle_pin",
+      "anchor": "GEK.md:9"
+    },
+    {
+      "kind": "armed",
+      "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:246"
+    },
+    {
+      "kind": "constant_traced",
+      "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:239"
+    },
+    {
+      "kind": "ceremony",
+      "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:239"
+    },
+    {
+      "kind": "spec_pin",
+      "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:246"
+    },
+    {
+      "kind": "lock_pin",
+      "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:246"
+    },
+    {
+      "kind": "thresholds_pin",
+      "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:246"
+    },
+    {
+      "kind": "evidence_class",
+      "claims": [
+        "complete",
+        "proven",
+        "verified",
+        "PASS",
+        "MATCHED"
+      ],
+      "requires_oracle_metric": true,
+      "anchor": "GEK.md:12"
+    },
+    {
+      "kind": "token",
+      "expect": "PV-Gate: checkpoint",
+      "in": "message",
+      "trigger": "m1/checkpoints/**",
+      "anchor": "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1508"
+    },
+    {
+      "kind": "scope",
+      "allow": [
+        "m1/**",
+        "design/**",
+        "gates/**",
+        "GEK.md",
+        "GEK.lock",
+        "gate-spec.json",
+        "thresholds.json",
+        ".github/**",
+        "m1/evidence/**"
+      ],
+      "deny": [
+        "archive/**",
+        "**/*.sh",
+        "**/*.exe",
+        "**/*.bin"
+      ],
+      "anchor": "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1508"
+    },
+    {
+      "kind": "token",
+      "expect": "DERIVED_SCHEMA_OK",
+      "in": "artifact",
+      "turn": "P4.TURN-01",
+      "anchor": "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1350"
+    },
+    {
+      "kind": "token",
+      "expect": "DERIVED_BASE_IMMUTABLE",
+      "in": "artifact",
+      "turn": "P4.TURN-01",
+      "anchor": "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1351"
+    },
+    {
+      "kind": "token",
+      "expect": "DERIVED_SUPERSEDES_OK",
+      "in": "artifact",
+      "turn": "P4.TURN-01",
+      "anchor": "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1352"
+    },
+    {
+      "kind": "token",
+      "expect": "UNASSIGNED_PRECISION_OK",
+      "in": "artifact",
+      "turn": "P4.TURN-01",
+      "anchor": "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1353"
+    },
+    {
+      "kind": "token",
+      "expect": "R36_LEFT_7D_OK",
+      "in": "artifact",
+      "turn": "P4.TURN-02",
+      "anchor": "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1395"
+    },
+    {
+      "kind": "token",
+      "expect": "R36_RIGHT_FRIDAY_OK",
+      "in": "artifact",
+      "turn": "P4.TURN-02",
+      "anchor": "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1396"
+    },
+    {
+      "kind": "token",
+      "expect": "R36_OLD_ORIGIN_NOT_DRAWN",
+      "in": "artifact",
+      "turn": "P4.TURN-02",
+      "anchor": "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1397"
+    },
+    {
+      "kind": "token",
+      "expect": "R36_ALL_OBJECTS_CLIPPED",
+      "in": "artifact",
+      "turn": "P4.TURN-02",
+      "anchor": "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1398"
+    },
+    {
+      "kind": "token",
+      "expect": "TABLE_OFF_BY_DEFAULT",
+      "in": "artifact",
+      "turn": "P4.TURN-03",
+      "anchor": "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1444"
+    },
+    {
+      "kind": "token",
+      "expect": "LABEL_COLLISION_ZERO",
+      "in": "artifact",
+      "turn": "P4.TURN-03",
+      "anchor": "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1445"
+    },
+    {
+      "kind": "token",
+      "expect": "SD_TEXT_COMPACT",
+      "in": "artifact",
+      "turn": "P4.TURN-03",
+      "anchor": "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1446"
+    },
+    {
+      "kind": "token",
+      "expect": "INTRA_OFF_BY_DEFAULT",
+      "in": "artifact",
+      "turn": "P4.TURN-03",
+      "anchor": "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1447"
+    },
+    {
+      "kind": "token",
+      "expect": "ROOM_BUDGET_INTEGER",
+      "in": "artifact",
+      "turn": "P4.TURN-04",
+      "anchor": "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1491"
+    },
+    {
+      "kind": "token",
+      "expect": "ROOM_BUDGET_METHOD_BISECTION",
+      "in": "artifact",
+      "turn": "P4.TURN-04",
+      "anchor": "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1492"
+    },
+    {
+      "kind": "token",
+      "expect": "ROOM_CAPTURE_SHAS_RECORDED",
+      "in": "artifact",
+      "turn": "P4.TURN-04",
+      "anchor": "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1493"
+    },
+    {
+      "kind": "scope",
+      "allow": [
+        "m1/**",
+        "design/**",
+        "GEK.md",
+        "GEK.lock",
+        "gate-spec.json",
+        "thresholds.json",
+        ".github/**",
+        "m1/evidence/**"
+      ],
+      "deny": [
+        "archive/**",
+        "**/*.sh",
+        "**/*.exe",
+        "**/*.bin"
+      ],
+      "anchor": "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md:1320"
+    }
+  ],
+  "cards": [
+    {
+      "id": "commit-substance-v1",
+      "questions": [
+        {
+          "q": "Does the completion or verification claim in this commit rest on evidence produced by the same artifact it judges rather than an independent oracle? Answer 1.0 if yes, 0.0 if no.",
+          "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:262"
+        },
+        {
+          "q": "Does this diff introduce a numeric constant that is NOT traced to a cited authority line or a measured derivation in the evidence rows? Answer 1.0 if yes, 0.0 if no.",
+          "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:263"
+        },
+        {
+          "q": "Does the evidence for each touched subsystem fail to name an observable that exists outside the committer's own session (a harness choreography, a self-authored comparison, or a session-local artifact standing in as proof)? Answer 1.0 if yes, 0.0 if no.",
+          "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:265"
+        },
+        {
+          "q": "Does the commit message claim a phase or turn is complete while the turn's named gate token is absent from any tool-result artifact in this commit? Answer 1.0 if yes, 0.0 if no.",
+          "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:266"
+        },
+        {
+          "q": "Are enforcement, gate, or authority files changed in this commit WITHOUT a recompile and recalibration record carried in the same commit? Answer 1.0 if yes, 0.0 if no.",
+          "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:267"
+        },
+        {
+          "q": "Is this commit documentation, ledger bookkeeping, checkpoint bookkeeping, or state ceremony presented as substantive progress — an advancement or status claim whose diff changes no verified behavior, no gate outcome, and no measured evidence? Answer 1.0 if yes, 0.0 if no.",
+          "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:246"
+        }
+      ],
+      "composite": "(own*act + v + max(bullet))/3",
+      "thresholds_ref": "thresholds.json#commit-substance-v1"
+    }
+  ],
+  "oracles": [
+    {
+      "path": "m1/evidence/operator-zones-eurusd/operator-zones.json",
+      "metric": "zone_recall>=0.95",
+      "anchor": "GEK.md:oracle"
+    },
+    {
+      "path": "m1/evidence/operator-zones-eurusd/operator-zones.json",
+      "metric": "zone_recall>=0.95",
+      "anchor": "GEK.md:oracle"
+    }
+  ]
+}

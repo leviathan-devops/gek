@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "project": "PLUTUS_VISION",
+  "root": "/tmp/gek-rt/PLUTUS_VISION",
+  "remote": "https://github.com/leviathan-devops/plutus-vision-v5.git",
+  "authority": {
+    "design/DESIGN_BLUEPRINT_v5.2_COMPILER_GRADE.md": "d1776a680bb86a8e30be81d097751ebf6ef576f1751cd091117752cfe60f0dcf",
+    "design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md": "1d510185f46320ffe9d83231bb8367a0efe31326efa1266b4cfcdc73c835766f"
+  },
+  "oracles": {
+    "m1/evidence/operator-zones-eurusd/operator-zones.json": "93f81309c58d1777413391cf186f246bbe66b8d410c3e98e08a79c1912d013be"
+  },
+  "gate_spec": "8d35a3c60c6cc69dcfa40eebe528a0c1416f95e3bcff45d7ae5ef7f744e42e2b",
+  "armed": true,
+  "server_checks": [
+    "gek-mechanical",
+    "gek-judge",
+    "gek-identity"
+  ],
+  "thresholds_sha": "ff59c4f8baff932481eb0aef67ba6c22e3bd7c93201f87d8be4cbd34a87c26b6"
+}
