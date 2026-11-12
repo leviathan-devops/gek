@@ -5,24 +5,25 @@ import { createHash } from "node:crypto";
 const createHashFixture = () => createHash("sha256").update(readFileSync(`${SRC}/GEK.lock`)).digest("hex");
 import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync } from "node:fs";
 const SRC = "/tmp/gek-rt/PLUTUS_VISION";
+const FIXTURE = new URL("./fixtures/", import.meta.url).pathname;   // versioned IN THE REPO
 function freshProject() {
   rmSync("/tmp/gek-rt", { recursive: true, force: true });
   mkdirSync(SRC, { recursive: true });
-  cpSync("/tmp/pl-attach/GEK.md", `${SRC}/GEK.md`);
-  cpSync("/tmp/pl-attach/gate-spec.json", `${SRC}/gate-spec.json`);
-  cpSync("/tmp/pl-attach/GEK.lock", `${SRC}/GEK.lock`);
+  cpSync(`${FIXTURE}/GEK.md`, `${SRC}/GEK.md`);
+  cpSync(`${FIXTURE}/gate-spec.json`, `${SRC}/gate-spec.json`);
+  cpSync(`${FIXTURE}/GEK.lock`, `${SRC}/GEK.lock`);
   // the scratch tree IS the registered root for battery purposes (root_identity otherwise masks the pins under test)
   const l0 = JSON.parse(readFileSync(`${SRC}/GEK.lock`, "utf8")); l0.root = SRC; l0.remote = "https://github.com/leviathan-devops/plutus-vision-v5.git";
   writeFileSync(`${SRC}/GEK.lock`, JSON.stringify(l0, null, 2));
   // the anchor matches the FIXTURE's lock (post root-rewrite) so each attack meets its own pin, not a fixture artifact
-  writeFileSync(`/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK/locks/PLUTUS_VISION.lock`, createHashFixture());
+  writeFileSync(`/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK/locks/PLUTUS_VISION.lock`, createHashFixture());  // NOTE: the battery overwrites the LIVE anchor — restored from fixtures at exit below
 
-  cpSync("/tmp/pl-attach/thresholds.json", `${SRC}/thresholds.json`);
+  cpSync(`${FIXTURE}/thresholds.json`, `${SRC}/thresholds.json`);
   mkdirSync(`${SRC}/m1/evidence/operator-zones-eurusd`, { recursive: true });
-  cpSync("/tmp/pl-attach/m1/evidence/operator-zones-eurusd/operator-zones.json", `${SRC}/m1/evidence/operator-zones-eurusd/operator-zones.json`);
+  cpSync(`${FIXTURE}/m1/evidence/operator-zones-eurusd/operator-zones.json`, `${SRC}/m1/evidence/operator-zones-eurusd/operator-zones.json`);
   mkdirSync(`${SRC}/design`, { recursive: true });
-  cpSync("/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/PLUTUS_VISION/design/DESIGN_BLUEPRINT_v5.2_COMPILER_GRADE.md", `${SRC}/design/DESIGN_BLUEPRINT_v5.2_COMPILER_GRADE.md`);
-  cpSync("/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/PLUTUS_VISION/design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md", `${SRC}/design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md`);
+  cpSync(`${FIXTURE}/design/DESIGN_BLUEPRINT_v5.2_COMPILER_GRADE.md`, `${SRC}/design/DESIGN_BLUEPRINT_v5.2_COMPILER_GRADE.md`);
+  cpSync(`${FIXTURE}/design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md`, `${SRC}/design/BUILD_WORKFLOW_v5.2_COMPILER_GRADE.md`);
 }
 const C = (paths: string[], message: string, evidence: any = null, diff = `+${paths.join("\n+")}`) => ({ paths, message, evidence, diffText: diff, committer: "attacker" });
 let pass = 0, miss = 0;
@@ -49,5 +50,6 @@ await attack("G lock pins stripped by committer", () => { const l = JSON.parse(r
 await attack("H thresholds zeroed by committer", () => { writeFileSync(`${SRC}/thresholds.json`, JSON.stringify({ schema: 1, "commit-substance-v1": { t_act: 0.0, t_flag: 0.0 } })); }, C(["thresholds.json"], "chore: tune"), /GEK_THRESHOLDS_DRIFT|GEK_LOCK_DRIFT|GEK_SPEC_DRIFT/);
 await attack("J token forgery (text only, no artifact)", () => {}, C(["m1/src/x.ts"], "feat: turn done\n\nPV-Gate: checkpoint", null, "+const x = 1"), /PASS|REJECT/);
 await attack("K ceremony with a comment fig leaf", () => {}, C(["m1/out/ledger.md"], "docs(m1): the render evidence record - turns the corner", { observables: [] }, "+row: progress"), /GEK_CEREMONY|GEK_CLAIM_WITHOUT_ORACLE|GEK_LOCK_DRIFT|GEK_SPEC_DRIFT/);
+writeFileSync(`/home/leviathan/JARVIS_WORKSPACE/Shared_Workspace/GEK/locks/PLUTUS_VISION.lock`, readFileSync(`${FIXTURE}/../../locks/PLUTUS_VISION.lock.locked`, "utf8").trim());
 console.log(`\nBATTERY: ${pass} HELD, ${miss} BREACHED`);
 process.exit(miss ? 1 : 0);
