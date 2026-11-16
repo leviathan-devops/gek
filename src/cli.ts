@@ -31,7 +31,7 @@ switch (verb) {
     console.log(JSON.stringify(lock ?? { ok: false, reason: "GEK_NOT_INSTALLED" }, null, 1)); process.exit(0);
   }
   case "check": {
-    const surface = rest.includes("--explain") ? "explain" : "server";
+    const surface = rest.includes("--explain") ? "explain" : rest.includes("--local") ? "local" as never : "server";
     const checkKind = (rest.find((a) => a.startsWith("--check")) ?? "--check=full").split("=")[1] as never;
     // minimal commit capture for the server context: HEAD diff vs parent, message, evidence row if staged
     // THE PR RANGE with NO FALLBACK BASE: a single-commit capture launders violating subjects
@@ -41,7 +41,8 @@ switch (verb) {
     // THE BASE IS REQUIRED AND SINGLE-SOURCED: no flag->env->default ladder. The workflow passes
     // --base=origin/$GITHUB_BASE_REF (the tracking-ref form; the bare name is NOT a ref). Absent
     // flag, empty base, or an unresolvable ref all refuse by name - never a substitute range.
-    const baseArg = rest.find((a) => a.startsWith("--base="))?.split("=")[1]?.trim();
+    const isLocal = rest.includes("--local");
+    const baseArg = rest.find((a) => a.startsWith("--base="))?.split("=")[1]?.trim() ?? (isLocal ? "HEAD~1" : undefined);
     if (!baseArg) {
       console.error("GEK_RANGE_BASE_UNAVAILABLE: --base=<ref> is required on the server check (pass --base=origin/$GITHUB_BASE_REF from the workflow). No default base exists - a default would silently narrow the judged range.");
       process.exit(2);

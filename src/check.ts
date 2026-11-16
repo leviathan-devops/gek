@@ -8,7 +8,7 @@ import { evaluate, type Commit } from "./mech.ts";
 import { buildCard } from "./card.ts";
 import { askJudge } from "./judge.ts";
 
-export interface CheckOpts { surface: "server" | "explain"; check?: "mechanical" | "judge" | "identity"; dir: string }
+export interface CheckOpts { surface: "server" | "explain" | "local"; check?: "mechanical" | "judge" | "identity" | "full"; dir: string }
 
 function lawExtract(dir: string, anchors: string[], cap = 4000): string {
   // SCHEME-ROUTED resolution (not a ladder): gek:// anchors are the kernel's own authority and
