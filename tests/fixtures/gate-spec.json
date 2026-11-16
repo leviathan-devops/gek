@@ -39,6 +39,30 @@
       "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:239"
     },
     {
+      "kind": "weakened_check",
+      "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:239"
+    },
+    {
+      "kind": "positive_only_test",
+      "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:239"
+    },
+    {
+      "kind": "unwired_module",
+      "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:239"
+    },
+    {
+      "kind": "doc_inflation",
+      "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:239"
+    },
+    {
+      "kind": "stale_substrate",
+      "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:239"
+    },
+    {
+      "kind": "spec_betrayal",
+      "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:239"
+    },
+    {
       "kind": "spec_pin",
       "anchor": "gek://design/DESIGN_BLUEPRINT_GEK_V1.md:246"
     },

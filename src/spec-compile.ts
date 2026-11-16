@@ -59,6 +59,12 @@ export function compile(dir: string): { gate_spec: string; predicates: number; d
   push({ kind: "armed", anchor: `gek://${BP}:246` });
   push({ kind: "constant_traced", anchor: `gek://${BP}:239` });
   push({ kind: "ceremony", anchor: `gek://${BP}:239` });
+  push({ kind: "weakened_check", anchor: `gek://${BP}:239` });
+  push({ kind: "positive_only_test", anchor: `gek://${BP}:239` });
+  push({ kind: "unwired_module", anchor: `gek://${BP}:239` });
+  push({ kind: "doc_inflation", anchor: `gek://${BP}:239` });
+  push({ kind: "stale_substrate", anchor: `gek://${BP}:239` });
+  push({ kind: "spec_betrayal", anchor: `gek://${BP}:239` });
   push({ kind: "spec_pin", anchor: `gek://${BP}:246` });
   push({ kind: "lock_pin", anchor: `gek://${BP}:246` });
   push({ kind: "thresholds_pin", anchor: `gek://${BP}:246` });

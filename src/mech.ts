@@ -94,6 +94,68 @@ export function evaluate(pred: { kind: string; expect?: string; in?: string; all
         ? bad("GEK_CLAIM_WITHOUT_ORACLE", `message claims '${hit}' but no oracle_metric observable is carried — a completion claim requires operator ground truth`)
         : ok();
     }
+    case "weakened_check": {
+      // R54: diff modifies a TEST to make it pass (removing assertions, loosening constraints)
+      const testLines = c.diffText.split("\n").filter((l) => l.startsWith("-") && /expect|assert|should|must|throw|reject/i.test(l));
+      const removedAsserts = testLines.filter((l) => /expect|assert|should|must|throw|reject/i.test(l)).length;
+      const addedAsserts = c.diffText.split("\n").filter((l) => l.startsWith("+") && /expect|assert|should|must|throw|reject/i.test(l)).length;
+      const isTestFile = c.paths.some((p2) => /test|spec|__tests__/i.test(p2));
+      if (isTestFile && removedAsserts > addedAsserts + 1)
+        return bad("GEK_WEAKENED_CHECK", `test weakened: ${removedAsserts} assertions removed, ${addedAsserts} added — a test modified to pass is a broken test. Remedy: restore the removed assertions or prove why they were wrong`);
+      return ok();
+    }
+    case "positive_only_test": {
+      // R32: new test file with zero adversarial/negative cases
+      const isNewTest = c.paths.some((p2) => /test|spec/i.test(p2) && c.diffText.includes(`+`) && !c.diffText.match(/^[-]/m));
+      if (!isNewTest) return ok();
+      const negCount = (c.diffText.match(/throw|reject|fail|error|invalid|null|undefined|empty|boundary|edge|NaN|denied|refuse/gi) ?? []).length;
+      const posCount = (c.diffText.match(/expect.*toBe|expect.*toEqual|expect.*toBeTruthy|expect.*toBeDefined/g) ?? []).length;
+      if (posCount > 3 && negCount < 2)
+        return bad("GEK_POSITIVE_ONLY_TEST", `new test has ${posCount} positive assertions and ${negCount} negative/adversarial cases — positive-only tests are theatre. Remedy: add adversarial cases (empty/null/boundary/error) before the happy path`);
+      return ok();
+    }
+    case "unwired_module": {
+      // R12/R27: new module added but never imported anywhere in the diff or the declared scope
+      const newExports = [...c.diffText.matchAll(/^\+export\s+(?:const|function|class|type|interface)\s+(\w+)/gm)].map((x) => x[1]);
+      if (!newExports.length) return ok();
+      const importText = c.diffText.split("\n").filter((l) => l.startsWith("+") && /import|require|from/.test(l)).join(" ");
+      const unwired = newExports.filter((e) => !importText.includes(e) && !c.message.includes(e));
+      if (unwired.length && c.paths.length > 1)
+        return bad("GEK_UNWIRED_MODULE", `new exports ${unwired.join(", ")} have no import in this diff — an unwired module is dead code (R12/R27). Remedy: wire the import in the same commit or defer the export`);
+      return ok();
+    }
+    case "doc_inflation": {
+      // R23: documentation growing faster than code — docs-after-docs is progress theatre
+      const docLines = c.diffText.split("\n").filter((l) => l.startsWith("+") && !l.startsWith("+++") && c.paths.some((p2) => /\.(md|txt|rst)$/.test(p2))).length;
+      const codeLines = c.diffText.split("\n").filter((l) => l.startsWith("+") && !l.startsWith("+++") && c.paths.some((p2) => /\.(ts|js|py|sh|pine)$/.test(p2))).length;
+      const docOnly = c.paths.length > 0 && c.paths.every((p2) => /\.(md|txt|rst|jsonl?)$/.test(p2));
+      const mdOnly = c.paths.length > 0 && c.paths.every((p2) => /\.md$/.test(p2));
+      if ((docOnly || mdOnly) && (docLines > 50 || c.diffText.split('\n').filter((l: string) => l.startsWith('+')).length > 30) && /(complete|done|finished|working|ready|pass|green|explain|approach|consider|should be|better)/i.test(c.message))
+        return bad("GEK_DOC_INFLATION", `docs-only commit (${docLines} lines) carrying completion language with zero code — documentation mass is not progress (R23). Remedy: land the code that the docs describe`);
+      return ok();
+    }
+    case "stale_substrate": {
+      // R13/R14/R49: a claim about data/query results without asserting the substrate's scope+freshness
+      const dataClaim = /(queried|searched|scanned|indexed|grepped|found).{0,20}\d+/i.test(c.message);
+      const zeroClaim = /(zero|0|no|empty|nothing|none|couldn.?t find|did.?t find|no luck)/i.test(c.message) || /(zero|0|no|empty)\s+(results?|rows?|matches?|hits?|files?|entries?)/i.test(c.message);
+      const hasScope = /(store|index|corpus|scope|path|freshness|build time)/i.test(c.message + c.diffText.slice(0, 2000));
+      if ((dataClaim || zeroClaim) && !hasScope)
+        return bad("GEK_STALE_SUBSTRATE", `data/zero-results claim without naming the store, scope, and freshness — a zero from the wrong substrate is indistinguishable from a zero from a broken one (R13/R14/R49). Remedy: state the store path, the query, and the substrate build time`);
+      return ok();
+    }
+    case "spec_betrayal": {
+      // R56: the code contradicts the workflow's declared behavior
+      const wfText = c.diffText.slice(0, 3000);
+      const inventionMarkers = [
+        /(?:\/\/|#)\s*(?:TODO|FIXME|HACK|WORKAROUND|temporary|for now)/i,
+        /(?:\/\/|#)\s*(?:not in spec|added this|extra|bonus|additionally)/i,
+      ];
+      const hasInvention = inventionMarkers.some((re) => re.test(wfText)) || /(?:for now|workaround|not in spec|added this|bonus|extra|additionally|better approach|improved version|replacing the spec|reorganiz|readab|clean.?up|refactor|simplif|streamlin)/i.test(wfText);
+      const hasScopeCreep = c.paths.some((p2) => !/(m1|design|gates|GEK|gate-spec|thresholds|\.github|docs|corpus|context_management|tests|locks|\.lock)/.test(p2)) || /(optimi[sz]|refactor|clean.?up|reorganiz|improve|better)/i.test(c.message);
+      if (hasInvention && hasScopeCreep)
+        return bad("GEK_SPEC_BETRAYAL", `invention marker in a file outside the declared scope — code outside the blueprint is a betrayal (R56). Remedy: remove the invented behavior or add it to the workflow first`);
+      return ok();
+    }
     case "ceremony": {
       // docs/ledger-only diff + advancement language + no gate token = bookkeeping sold as progress
       const docsOnly = c.paths.length > 0 && c.paths.every((p2) => /\.(md|jsonl|json)$/.test(p2) && !/(package|tsconfig)\.json$/.test(p2));

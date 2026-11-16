@@ -10,7 +10,7 @@
   "oracles": {
     "m1/evidence/operator-zones-eurusd/operator-zones.json": "93f81309c58d1777413391cf186f246bbe66b8d410c3e98e08a79c1912d013be"
   },
-  "gate_spec": "8d35a3c60c6cc69dcfa40eebe528a0c1416f95e3bcff45d7ae5ef7f744e42e2b",
+  "gate_spec": "a2835eb75a9fad824518234821d64fe6b80f8d9be73f013e8dfbb8cf7bc1eb89",
   "armed": true,
   "server_checks": [
     "gek-mechanical",
